@@ -37,16 +37,6 @@ st.markdown("""
     box-shadow: 0 8px 32px rgba(124, 58, 237, 0.1);
 }
 
-.sector-card {
-    background: linear-gradient(135deg, rgba(124, 58, 237, 0.15) 0%, rgba(79, 70, 229, 0.1) 100%);
-    border: 1px solid rgba(167, 139, 250, 0.3);
-    border-radius: 15px;
-    padding: 25px;
-    margin: 15px 0;
-    backdrop-filter: blur(10px);
-    box-shadow: 0 10px 40px rgba(124, 58, 237, 0.2);
-}
-
 .main-header {
     text-align: center;
     background: linear-gradient(135deg, #7c3aed, #a855f7);
@@ -112,6 +102,41 @@ st.markdown("""
     font-size: 0.9rem;
     color: #fca5a5;
 }
+
+.recommendation {
+    border-radius: 15px;
+    padding: 20px;
+    text-align: center;
+    font-weight: 600;
+    margin: 15px 0;
+    border: 2px solid transparent;
+    background: linear-gradient(135deg, rgba(0,0,0,0.2), rgba(0,0,0,0.1));
+}
+
+.rec-strong-buy {
+    background: linear-gradient(135deg, #059669, #047857);
+    border-color: #34d399;
+    color: white;
+    box-shadow: 0 8px 25px rgba(52, 211, 153, 0.3);
+}
+
+.rec-buy {
+    background: linear-gradient(135deg, #0d9488, #0f766e);
+    border-color: #5eead4;
+    color: white;
+}
+
+.rec-hold {
+    background: linear-gradient(135deg, #d97706, #b45309);
+    border-color: #fbbf24;
+    color: white;
+}
+
+.rec-avoid {
+    background: linear-gradient(135deg, #dc2626, #b91c1c);
+    border-color: #f87171;
+    color: white;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -136,7 +161,7 @@ def check_password():
             <div style="text-align: center; margin-bottom: 30px;">
                 <div style="font-size: 3rem; margin-bottom: 10px;">📊</div>
                 <h2 style="color: #a78bfa; margin-bottom: 5px;">NYZTrade Pro</h2>
-                <p style="color: #94a3b8;">Sector-Focused Stock Screening Platform</p>
+                <p style="color: #94a3b8;">Complete Stock Analysis Platform</p>
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -311,7 +336,7 @@ def create_sector_analysis(df):
 # ============================================================================
 # UTILITY FUNCTIONS
 # ============================================================================
-def retry_with_backoff(retries=2, backoff_in_seconds=1):
+def retry_with_backoff(retries=2, backoff_in_seconds=0.5):
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
@@ -327,11 +352,11 @@ def retry_with_backoff(retries=2, backoff_in_seconds=1):
         return wrapper
     return decorator
 
-@st.cache_data(ttl=3600)
-@retry_with_backoff(retries=2, backoff_in_seconds=1)
+@st.cache_data(ttl=7200)
+@retry_with_backoff(retries=2, backoff_in_seconds=0.5)
 def fetch_stock_data(ticker):
     try:
-        time.sleep(0.1)  # Rate limiting
+        time.sleep(0.05)  # Minimal rate limiting
         stock = yf.Ticker(ticker)
         info = stock.info
         if not info or len(info) < 5:
@@ -433,10 +458,125 @@ def calculate_fair_value_and_upside(info, sector):
         }
 
 # ============================================================================
-# ENHANCED SECTOR SCREENING FUNCTIONS
+# INDIVIDUAL STOCK ANALYSIS
 # ============================================================================
-def run_sector_screening(df, selected_sectors, max_stocks_per_sector=None):
-    """Run comprehensive sector-wise screening with all stocks"""
+def analyze_individual_stock(ticker, sector):
+    """Detailed analysis of individual stock"""
+    info, error = fetch_stock_data(ticker)
+    
+    if error or not info:
+        return None, error
+    
+    # Basic info
+    company = info.get('longName', ticker)
+    price = info.get('currentPrice', 0) or info.get('regularMarketPrice', 0)
+    market_cap = info.get('marketCap', 0)
+    
+    # Financial metrics
+    trailing_pe = info.get('trailingPE', 0)
+    forward_pe = info.get('forwardPE', 0)
+    pb_ratio = info.get('priceToBook', 0)
+    dividend_yield = info.get('dividendYield', 0)
+    beta = info.get('beta', 0)
+    roe = info.get('returnOnEquity', 0)
+    profit_margin = info.get('profitMargins', 0)
+    
+    # 52-week data
+    high_52w = info.get('fiftyTwoWeekHigh', 0)
+    low_52w = info.get('fiftyTwoWeekLow', 0)
+    
+    pct_from_high = None
+    pct_from_low = None
+    
+    if price and high_52w and low_52w and high_52w > low_52w:
+        pct_from_high = ((high_52w - price) / high_52w * 100)
+        pct_from_low = ((price - low_52w) / low_52w * 100)
+    
+    # Fair value calculations
+    valuation_data = calculate_fair_value_and_upside(info, sector)
+    
+    analysis = {
+        'company': company,
+        'ticker': ticker,
+        'sector': sector,
+        'price': price,
+        'market_cap': market_cap,
+        'cap_type': categorize_market_cap(market_cap),
+        'trailing_pe': trailing_pe,
+        'forward_pe': forward_pe,
+        'pb_ratio': pb_ratio,
+        'dividend_yield': dividend_yield,
+        'beta': beta,
+        'roe': roe,
+        'profit_margin': profit_margin,
+        'high_52w': high_52w,
+        'low_52w': low_52w,
+        'pct_from_high': pct_from_high,
+        'pct_from_low': pct_from_low,
+        **valuation_data
+    }
+    
+    return analysis, None
+
+def create_gauge_chart(upside_pe, upside_ev):
+    """Create professional dual gauge chart for valuations"""
+    fig = make_subplots(
+        rows=1, cols=2,
+        specs=[[{'type': 'indicator'}, {'type': 'indicator'}]],
+        horizontal_spacing=0.15
+    )
+    
+    fig.add_trace(go.Indicator(
+        mode="gauge+number+delta",
+        value=upside_pe if upside_pe else 0,
+        number={'suffix': "%", 'font': {'size': 36, 'color': '#e2e8f0'}},
+        delta={'reference': 0, 'increasing': {'color': "#34d399"}, 'decreasing': {'color': "#f87171"}},
+        title={'text': "PE Method", 'font': {'size': 16, 'color': '#a78bfa'}},
+        gauge={
+            'axis': {'range': [-50, 50]},
+            'bar': {'color': "#7c3aed"},
+            'steps': [
+                {'range': [-50, -20], 'color': '#7f1d1d'},
+                {'range': [-20, 0], 'color': '#78350f'},
+                {'range': [0, 20], 'color': '#14532d'},
+                {'range': [20, 50], 'color': '#065f46'}
+            ],
+            'threshold': {'line': {'color': "#f472b6", 'width': 4}, 'value': 0}
+        }
+    ), row=1, col=1)
+    
+    fig.add_trace(go.Indicator(
+        mode="gauge+number+delta",
+        value=upside_ev if upside_ev else 0,
+        number={'suffix': "%", 'font': {'size': 36, 'color': '#e2e8f0'}},
+        delta={'reference': 0, 'increasing': {'color': "#34d399"}, 'decreasing': {'color': "#f87171"}},
+        title={'text': "EV/EBITDA Method", 'font': {'size': 16, 'color': '#a78bfa'}},
+        gauge={
+            'axis': {'range': [-50, 50]},
+            'bar': {'color': "#ec4899"},
+            'steps': [
+                {'range': [-50, -20], 'color': '#7f1d1d'},
+                {'range': [-20, 0], 'color': '#78350f'},
+                {'range': [0, 20], 'color': '#14532d'},
+                {'range': [20, 50], 'color': '#065f46'}
+            ],
+            'threshold': {'line': {'color': "#f472b6", 'width': 4}, 'value': 0}
+        }
+    ), row=1, col=2)
+    
+    fig.update_layout(
+        height=350,
+        margin=dict(l=30, r=30, t=60, b=30),
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)'
+    )
+    return fig
+
+# ============================================================================
+# ENHANCED SECTOR SCREENING
+# ============================================================================
+def run_sector_screening(df, selected_sectors):
+    """Run comprehensive sector-wise screening with ALL stocks"""
     
     sector_results = {}
     overall_progress = st.progress(0)
@@ -445,37 +585,39 @@ def run_sector_screening(df, selected_sectors, max_stocks_per_sector=None):
     total_sectors = len(selected_sectors)
     
     for sector_idx, sector in enumerate(selected_sectors):
-        status_text.text(f"Analyzing sector: {sector}")
+        status_text.text(f"Processing {sector}...")
         
         # Get sector mapping
         sector_mapping = get_sector_mapping()
         categories = sector_mapping.get(sector, [])
         
-        # Filter stocks for this sector
-        sector_stocks = df[df['Category Name'].isin(categories)]
+        # Filter stocks for this sector - ENSURE ALL ARE INCLUDED
+        sector_stocks = df[df['Category Name'].isin(categories)].copy()
+        
+        st.info(f"Found {len(sector_stocks)} stocks in {sector} sector")
         
         if len(sector_stocks) == 0:
             continue
         
-        # Limit stocks if specified (for testing/performance)
-        if max_stocks_per_sector:
-            sector_stocks = sector_stocks.head(max_stocks_per_sector)
-        
         sector_data = []
         total_stocks = len(sector_stocks)
+        processed_count = 0
         
         for stock_idx, (_, row) in enumerate(sector_stocks.iterrows()):
-            # Update progress for individual stocks within sector
-            if stock_idx % 5 == 0:  # Update every 5 stocks to avoid too frequent updates
+            # Update progress more frequently
+            if stock_idx % 10 == 0:  # Update every 10 stocks
                 stock_progress = stock_idx / total_stocks
                 overall_sector_progress = (sector_idx + stock_progress) / total_sectors
                 overall_progress.progress(min(overall_sector_progress, 1.0))
+                status_text.text(f"Processing {sector}: {stock_idx+1}/{total_stocks} - {row['Ticker']}")
             
-            # Fetch stock data
+            # Fetch stock data - NO SKIPPING
             info, error = fetch_stock_data(row['Ticker'])
+            processed_count += 1
             
-            if not error and info:
-                try:
+            # Process even if there's an error - record what we can
+            try:
+                if not error and info:
                     price = info.get('currentPrice', 0) or info.get('regularMarketPrice', 0)
                     market_cap = info.get('marketCap', 0)
                     pe_ratio = info.get('trailingPE', 0)
@@ -514,12 +656,54 @@ def run_sector_screening(df, selected_sectors, max_stocks_per_sector=None):
                         '52W Low': low_52w,
                         'From 52W High %': -pct_from_high if pct_from_high else None,
                         'From 52W Low %': pct_from_low if pct_from_low else None,
+                        'Status': 'Success'
                     })
-                except Exception as e:
-                    continue
+                else:
+                    # Still record the stock even if data fetch failed
+                    sector_data.append({
+                        'Ticker': row['Ticker'],
+                        'Name': row['Name'],
+                        'Category': row['Category Name'],
+                        'Price': None,
+                        'Market Cap': None,
+                        'Cap Type': 'Unknown',
+                        'PE Ratio': None,
+                        'PB Ratio': None,
+                        'Fair Value': None,
+                        'Upside %': None,
+                        'Dividend Yield': None,
+                        'Beta': None,
+                        '52W High': None,
+                        '52W Low': None,
+                        'From 52W High %': None,
+                        'From 52W Low %': None,
+                        'Status': f'Error: {error}' if error else 'No Data'
+                    })
+            except Exception as e:
+                # Record failed stocks too
+                sector_data.append({
+                    'Ticker': row['Ticker'],
+                    'Name': row['Name'],
+                    'Category': row['Category Name'],
+                    'Price': None,
+                    'Market Cap': None,
+                    'Cap Type': 'Unknown',
+                    'PE Ratio': None,
+                    'PB Ratio': None,
+                    'Fair Value': None,
+                    'Upside %': None,
+                    'Dividend Yield': None,
+                    'Beta': None,
+                    '52W High': None,
+                    '52W Low': None,
+                    'From 52W High %': None,
+                    'From 52W Low %': None,
+                    'Status': f'Exception: {str(e)[:50]}'
+                })
         
         if sector_data:
             sector_results[sector] = pd.DataFrame(sector_data)
+            st.success(f"✅ {sector}: Processed {len(sector_data)}/{total_stocks} stocks")
         
         # Update overall progress for completed sector
         overall_progress.progress(min((sector_idx + 1) / total_sectors, 1.0))
@@ -529,118 +713,16 @@ def run_sector_screening(df, selected_sectors, max_stocks_per_sector=None):
     
     return sector_results
 
-def create_sector_summary_chart(sector_summary):
-    """Create interactive sector distribution chart"""
-    fig = px.bar(
-        sector_summary,
-        x='Stock Count',
-        y='Sector',
-        orientation='h',
-        title='Stock Distribution by Sector',
-        color='Stock Count',
-        color_continuous_scale='viridis'
-    )
-    
-    fig.update_layout(
-        height=500,
-        paper_bgcolor='rgba(0,0,0,0)',
-        plot_bgcolor='rgba(0,0,0,0)',
-        font=dict(color='#e2e8f0'),
-        title=dict(x=0.5, font=dict(size=18, color='#a78bfa')),
-        xaxis=dict(showgrid=True, gridcolor='rgba(167, 139, 250, 0.2)'),
-        yaxis=dict(showgrid=False)
-    )
-    
-    return fig
-
-def create_sector_performance_chart(sector_results):
-    """Create sector performance comparison"""
-    sector_stats = []
-    
-    for sector, df in sector_results.items():
-        if len(df) > 0:
-            avg_pe = df['PE Ratio'].replace([np.inf, -np.inf], np.nan).mean()
-            avg_pb = df['PB Ratio'].replace([np.inf, -np.inf], np.nan).mean()
-            avg_upside = df['Upside %'].replace([np.inf, -np.inf], np.nan).mean()
-            avg_from_high = df['From 52W High %'].mean()
-            
-            sector_stats.append({
-                'Sector': sector,
-                'Avg PE': avg_pe if pd.notna(avg_pe) else 0,
-                'Avg PB': avg_pb if pd.notna(avg_pb) else 0,
-                'Avg Upside %': avg_upside if pd.notna(avg_upside) else 0,
-                'Avg Distance from 52W High': avg_from_high if pd.notna(avg_from_high) else 0,
-                'Stock Count': len(df)
-            })
-    
-    if not sector_stats:
-        return None
-    
-    stats_df = pd.DataFrame(sector_stats)
-    
-    # Create subplot with multiple metrics
-    fig = make_subplots(
-        rows=2, cols=2,
-        subplot_titles=('Average PE Ratio', 'Average PB Ratio', 
-                       'Average Upside Potential (%)', 'Distance from 52W High (%)'),
-        specs=[[{"type": "bar"}, {"type": "bar"}],
-               [{"type": "bar"}, {"type": "bar"}]]
-    )
-    
-    # PE Ratio
-    fig.add_trace(
-        go.Bar(x=stats_df['Sector'], y=stats_df['Avg PE'], name='PE Ratio',
-               marker_color='#7c3aed'),
-        row=1, col=1
-    )
-    
-    # PB Ratio  
-    fig.add_trace(
-        go.Bar(x=stats_df['Sector'], y=stats_df['Avg PB'], name='PB Ratio',
-               marker_color='#ec4899'),
-        row=1, col=2
-    )
-    
-    # Average Upside
-    fig.add_trace(
-        go.Bar(x=stats_df['Sector'], y=stats_df['Avg Upside %'], 
-               name='Avg Upside %', marker_color='#34d399'),
-        row=2, col=1
-    )
-    
-    # Distance from High
-    fig.add_trace(
-        go.Bar(x=stats_df['Sector'], y=stats_df['Avg Distance from 52W High'], 
-               name='Distance from High', marker_color='#f59e0b'),
-        row=2, col=2
-    )
-    
-    fig.update_layout(
-        height=600,
-        showlegend=False,
-        paper_bgcolor='rgba(0,0,0,0)',
-        plot_bgcolor='rgba(0,0,0,0)',
-        font=dict(color='#e2e8f0'),
-        title=dict(text='Sector Performance Metrics', x=0.5, 
-                  font=dict(size=18, color='#a78bfa'))
-    )
-    
-    # Update all xaxis to rotate labels
-    for i in range(1, 5):
-        fig.update_xaxes(tickangle=45, row=(i-1)//2 + 1, col=(i-1)%2 + 1)
-    
-    return fig
-
 # ============================================================================
 # MAIN APPLICATION
 # ============================================================================
 
 st.markdown('''
 <div class="main-header">
-    NYZTRADE SECTOR SCREENER PRO
+    NYZTRADE COMPLETE STOCK ANALYZER
 </div>
 <div class="sub-header">
-    🎯 Complete Sector Analysis | Fair Value Calculations | Upside Potential
+    🎯 Complete Sector Analysis | Individual Stock Valuation | Fair Value Calculations
 </div>
 ''', unsafe_allow_html=True)
 
@@ -727,215 +809,370 @@ with st.sidebar:
     
     st.markdown("---")
     
-    # SECTOR SELECTION
-    st.markdown("### 🎯 Sector Selection")
-    
-    available_sectors = sector_summary['Sector'].tolist()
-    available_sectors = [s for s in available_sectors if s != 'Other']
-    
-    # Show sector stock counts
-    st.markdown("**Available Sectors:**")
-    for _, row in sector_summary.head(10).iterrows():
-        if row['Sector'] != 'Other':
-            st.text(f"• {row['Sector']}: {row['Stock Count']:,} stocks")
-    
-    selected_sectors = st.multiselect(
-        "🏢 Choose Sectors to Analyze",
-        available_sectors,
-        default=available_sectors[:2],  # Select first 2 by default
-        help="Select sectors for comprehensive analysis with fair value calculations"
+    # MODE SELECTION
+    mode = st.radio(
+        "📊 Analysis Mode",
+        ["🏢 Sector Analysis", "📈 Individual Stock"],
+        help="Choose your analysis mode"
     )
     
-    st.markdown("---")
+    if mode == "🏢 Sector Analysis":
+        st.markdown("### 🎯 Sector Selection")
+        
+        available_sectors = sector_summary['Sector'].tolist()
+        available_sectors = [s for s in available_sectors if s != 'Other']
+        
+        # Show sector stock counts
+        st.markdown("**Available Sectors:**")
+        for _, row in sector_summary.head(10).iterrows():
+            if row['Sector'] != 'Other':
+                st.text(f"• {row['Sector']}: {row['Stock Count']:,} stocks")
+        
+        selected_sectors = st.multiselect(
+            "🏢 Choose Sectors to Analyze",
+            available_sectors,
+            default=[],
+            help="Select sectors for complete analysis"
+        )
+        
+        if selected_sectors:
+            total_stocks = 0
+            for sector in selected_sectors:
+                sector_count = sector_summary[sector_summary['Sector'] == sector]['Stock Count'].iloc[0]
+                total_stocks += sector_count
+            st.info(f"Will analyze {total_stocks:,} stocks across {len(selected_sectors)} sectors")
+        
+        st.markdown("---")
+        
+        sort_by = st.selectbox(
+            "Sort Results By",
+            ["Upside % (Desc)", "Price (Asc)", "PE Ratio (Asc)", "Market Cap (Desc)"],
+            help="Choose how to sort the results within each sector"
+        )
+        
+        run_analysis = st.button("🚀 ANALYZE ALL SECTORS", use_container_width=True, type="primary")
     
-    # ANALYSIS PARAMETERS
-    st.markdown("### ⚙️ Analysis Parameters")
-    
-    analysis_mode = st.selectbox(
-        "Analysis Mode",
-        ["Complete Analysis", "Quick Sample (50 stocks/sector)"],
-        help="Choose between complete sector analysis or quick sample for testing"
-    )
-    
-    sort_by = st.selectbox(
-        "Sort Results By",
-        ["Upside % (Desc)", "Price (Asc)", "PE Ratio (Asc)", "Market Cap (Desc)"],
-        help="Choose how to sort the results within each sector"
-    )
-    
-    st.markdown("---")
-    
-    run_analysis = st.button("🚀 RUN COMPLETE SECTOR ANALYSIS", use_container_width=True, type="primary")
+    else:  # Individual Stock Analysis
+        st.markdown("### 📈 Individual Stock Analysis")
+        
+        # Stock selection
+        search = st.text_input(
+            "🔍 Search Stock",
+            placeholder="Company name or ticker...",
+            help="Search by company name or ticker symbol"
+        )
+        
+        if search:
+            search_upper = search.upper()
+            filtered_df = df[
+                df['Ticker'].str.upper().str.contains(search_upper, na=False) |
+                df['Name'].str.upper().str.contains(search_upper, na=False)
+            ].head(50)  # Limit to first 50 results
+        else:
+            filtered_df = df.head(50)  # Show first 50 stocks
+        
+        if len(filtered_df) > 0:
+            stock_options = [f"{row['Name']} ({row['Ticker']})" for _, row in filtered_df.iterrows()]
+            selected_stock = st.selectbox("🎯 Select Stock", [""] + stock_options)
+            
+            if selected_stock:
+                ticker = selected_stock.split("(")[1].strip(")")
+                stock_row = df[df['Ticker'] == ticker]
+                if not stock_row.empty:
+                    category = stock_row['Category Name'].iloc[0]
+                    sector_mapping = get_sector_mapping()
+                    
+                    # Find sector for this stock
+                    stock_sector = 'Other'
+                    for sector, categories in sector_mapping.items():
+                        if category in categories:
+                            stock_sector = sector
+                            break
+                    
+                    st.session_state.selected_stock = {
+                        'ticker': ticker,
+                        'name': stock_row['Name'].iloc[0],
+                        'sector': stock_sector
+                    }
+        
+        # Manual ticker input
+        st.markdown("---")
+        manual_ticker = st.text_input(
+            "✏️ Manual Ticker Entry",
+            placeholder="e.g., RELIANCE.NS",
+            help="Enter any ticker manually"
+        )
+        
+        if manual_ticker:
+            st.session_state.selected_stock = {
+                'ticker': manual_ticker.upper(),
+                'name': manual_ticker.upper(),
+                'sector': 'Other'
+            }
+        
+        analyze_stock = st.button("📊 ANALYZE STOCK", use_container_width=True, type="primary")
 
 # ============================================================================
-# SECTOR OVERVIEW
+# MAIN CONTENT
 # ============================================================================
-st.markdown('<div class="section-header">🏢 Sector Overview</div>', unsafe_allow_html=True)
 
-# Display sector distribution
-col1, col2 = st.columns([1, 2])
-
-with col1:
+if mode == "🏢 Sector Analysis":
+    # Sector Overview
+    st.markdown('<div class="section-header">🏢 Sector Overview</div>', unsafe_allow_html=True)
+    
+    # Display sector distribution
     st.markdown("**Sector Distribution:**")
     for _, row in sector_summary.head(10).iterrows():
         st.markdown(f"**{row['Sector']}**: {row['Stock Count']:,} stocks ({row['Sub-Categories']} categories)")
-
-with col2:
-    # Sector distribution chart
-    fig_dist = create_sector_summary_chart(sector_summary)
-    st.plotly_chart(fig_dist, use_container_width=True)
-
-# ============================================================================
-# MAIN ANALYSIS
-# ============================================================================
-
-if run_analysis and selected_sectors:
-    max_stocks = 50 if analysis_mode == "Quick Sample (50 stocks/sector)" else None
     
-    total_estimated = 0
-    for sector in selected_sectors:
-        sector_count = sector_summary[sector_summary['Sector'] == sector]['Stock Count'].iloc[0]
-        if max_stocks:
-            total_estimated += min(sector_count, max_stocks)
-        else:
-            total_estimated += sector_count
-    
-    st.markdown(f'''
-    <div class="highlight-box">
-        <h3>🔍 Analyzing {len(selected_sectors)} Sectors</h3>
-        <p>Processing approximately <strong>{total_estimated:,}</strong> stocks with fair value calculations...</p>
-        <p><strong>Mode:</strong> {analysis_mode}</p>
-    </div>
-    ''', unsafe_allow_html=True)
-    
-    # Run sector screening
-    sector_results = run_sector_screening(df, selected_sectors, max_stocks)
-    
-    if sector_results:
-        total_analyzed = sum(len(sector_df) for sector_df in sector_results.values())
-        
+    if run_analysis and selected_sectors:
         st.markdown(f'''
-        <div class="success-message">
-            ✅ Analysis completed for <strong>{len(sector_results)}</strong> sectors<br>
-            📊 Total stocks analyzed: <strong>{total_analyzed:,}</strong><br>
-            💰 Fair value calculations: <strong>PE & EV/EBITDA methods</strong>
+        <div class="highlight-box">
+            <h3>🔍 Comprehensive Sector Analysis</h3>
+            <p>Processing <strong>ALL</strong> stocks in {len(selected_sectors)} selected sectors...</p>
         </div>
         ''', unsafe_allow_html=True)
         
-        # Create performance comparison chart
-        fig_perf = create_sector_performance_chart(sector_results)
-        if fig_perf:
-            st.markdown('<div class="section-header">📊 Sector Performance Comparison</div>', unsafe_allow_html=True)
-            st.plotly_chart(fig_perf, use_container_width=True)
+        # Run complete sector screening
+        sector_results = run_sector_screening(df, selected_sectors)
         
-        # Display sector-wise results
-        st.markdown('<div class="section-header">🎯 Detailed Sector Analysis with Fair Value</div>', unsafe_allow_html=True)
-        
-        for sector, sector_df in sector_results.items():
-            with st.expander(f"🏢 {sector} ({len(sector_df):,} stocks analyzed)", expanded=True):
-                
-                # Sector summary stats
-                col1, col2, col3, col4, col5 = st.columns(5)
-                
-                with col1:
-                    avg_pe = sector_df['PE Ratio'].replace([np.inf, -np.inf], np.nan).mean()
-                    st.metric("Avg PE Ratio", f"{avg_pe:.2f}" if pd.notna(avg_pe) else "N/A")
-                
-                with col2:
-                    avg_pb = sector_df['PB Ratio'].replace([np.inf, -np.inf], np.nan).mean()
-                    st.metric("Avg PB Ratio", f"{avg_pb:.2f}" if pd.notna(avg_pb) else "N/A")
-                
-                with col3:
-                    avg_upside = sector_df['Upside %'].replace([np.inf, -np.inf], np.nan).mean()
-                    st.metric("Avg Upside %", f"{avg_upside:+.1f}%" if pd.notna(avg_upside) else "N/A")
-                
-                with col4:
-                    avg_from_high = sector_df['From 52W High %'].mean()
-                    st.metric("Avg from 52W High", f"{avg_from_high:+.1f}%" if pd.notna(avg_from_high) else "N/A")
-                
-                with col5:
-                    undervalued_count = len(sector_df[(sector_df['Upside %'] > 0) & (sector_df['Upside %'].notna())])
-                    st.metric("Undervalued Stocks", f"{undervalued_count}")
-                
-                # Sort results based on user preference
-                display_df = sector_df.copy()
-                
-                if sort_by == "Upside % (Desc)":
-                    display_df = display_df.sort_values('Upside %', ascending=False, na_position='last')
-                elif sort_by == "Price (Asc)":
-                    display_df = display_df.sort_values('Price', ascending=True, na_position='last')
-                elif sort_by == "PE Ratio (Asc)":
-                    display_df = display_df.sort_values('PE Ratio', ascending=True, na_position='last')
-                elif sort_by == "Market Cap (Desc)":
-                    display_df = display_df.sort_values('Market Cap', ascending=False, na_position='last')
-                
-                # Format display columns
-                display_cols = ['Ticker', 'Name', 'Price', 'Fair Value', 'Upside %', 'PE Ratio', 'From 52W High %', 'Cap Type']
-                formatted_df = display_df[display_cols].copy()
-                
-                # Format numerical columns
-                formatted_df['Price'] = formatted_df['Price'].apply(lambda x: f"₹{x:,.2f}" if pd.notna(x) and x > 0 else "N/A")
-                formatted_df['Fair Value'] = formatted_df['Fair Value'].apply(lambda x: f"₹{x:,.2f}" if pd.notna(x) and x > 0 else "N/A")
-                formatted_df['Upside %'] = formatted_df['Upside %'].apply(lambda x: f"{x:+.1f}%" if pd.notna(x) else "N/A")
-                formatted_df['PE Ratio'] = formatted_df['PE Ratio'].apply(lambda x: f"{x:.2f}" if pd.notna(x) and x > 0 else "N/A")
-                formatted_df['From 52W High %'] = formatted_df['From 52W High %'].apply(lambda x: f"{x:+.1f}%" if pd.notna(x) else "N/A")
-                
-                st.markdown(f"**📈 Top Opportunities (sorted by {sort_by}):**")
-                
-                st.dataframe(
-                    formatted_df.head(20),  # Show top 20 per sector
-                    use_container_width=True,
-                    hide_index=True,
-                    column_config={
-                        "Ticker": st.column_config.TextColumn("Ticker", width="small"),
-                        "Name": st.column_config.TextColumn("Company", width="medium"),
-                        "Price": st.column_config.TextColumn("Price", width="small"),
-                        "Fair Value": st.column_config.TextColumn("Fair Value", width="small"),
-                        "Upside %": st.column_config.TextColumn("Upside", width="small"),
-                        "PE Ratio": st.column_config.TextColumn("PE", width="small"),
-                        "From 52W High %": st.column_config.TextColumn("vs High", width="small"),
-                        "Cap Type": st.column_config.TextColumn("Cap", width="small"),
-                    }
+        if sector_results:
+            total_analyzed = sum(len(sector_df) for sector_df in sector_results.values())
+            successful_analyses = sum(len(sector_df[sector_df['Status'] == 'Success']) for sector_df in sector_results.values())
+            
+            st.markdown(f'''
+            <div class="success-message">
+                ✅ Complete analysis finished!<br>
+                📊 Total stocks processed: <strong>{total_analyzed:,}</strong><br>
+                💰 Successful analyses: <strong>{successful_analyses:,}</strong><br>
+                🎯 Coverage: <strong>{(successful_analyses/total_analyzed*100):.1f}%</strong>
+            </div>
+            ''', unsafe_allow_html=True)
+            
+            # Display sector-wise results
+            st.markdown('<div class="section-header">🎯 Complete Sector Analysis Results</div>', unsafe_allow_html=True)
+            
+            for sector, sector_df in sector_results.items():
+                with st.expander(f"🏢 {sector} ({len(sector_df):,} stocks processed)", expanded=True):
+                    
+                    # Filter successful analyses for metrics
+                    success_df = sector_df[sector_df['Status'] == 'Success'].copy()
+                    
+                    if len(success_df) > 0:
+                        # Sector summary stats
+                        col1, col2, col3, col4, col5 = st.columns(5)
+                        
+                        with col1:
+                            avg_pe = success_df['PE Ratio'].replace([np.inf, -np.inf], np.nan).mean()
+                            st.metric("Avg PE Ratio", f"{avg_pe:.2f}" if pd.notna(avg_pe) else "N/A")
+                        
+                        with col2:
+                            avg_pb = success_df['PB Ratio'].replace([np.inf, -np.inf], np.nan).mean()
+                            st.metric("Avg PB Ratio", f"{avg_pb:.2f}" if pd.notna(avg_pb) else "N/A")
+                        
+                        with col3:
+                            avg_upside = success_df['Upside %'].replace([np.inf, -np.inf], np.nan).mean()
+                            st.metric("Avg Upside %", f"{avg_upside:+.1f}%" if pd.notna(avg_upside) else "N/A")
+                        
+                        with col4:
+                            avg_from_high = success_df['From 52W High %'].mean()
+                            st.metric("Avg from 52W High", f"{avg_from_high:+.1f}%" if pd.notna(avg_from_high) else "N/A")
+                        
+                        with col5:
+                            undervalued_count = len(success_df[(success_df['Upside %'] > 0) & (success_df['Upside %'].notna())])
+                            st.metric("Undervalued Stocks", f"{undervalued_count}")
+                        
+                        # Sort and display results
+                        display_df = success_df.copy()
+                        
+                        if sort_by == "Upside % (Desc)":
+                            display_df = display_df.sort_values('Upside %', ascending=False, na_position='last')
+                        elif sort_by == "Price (Asc)":
+                            display_df = display_df.sort_values('Price', ascending=True, na_position='last')
+                        elif sort_by == "PE Ratio (Asc)":
+                            display_df = display_df.sort_values('PE Ratio', ascending=True, na_position='last')
+                        elif sort_by == "Market Cap (Desc)":
+                            display_df = display_df.sort_values('Market Cap', ascending=False, na_position='last')
+                        
+                        # Format display columns
+                        display_cols = ['Ticker', 'Name', 'Price', 'Fair Value', 'Upside %', 'PE Ratio', 'From 52W High %', 'Cap Type']
+                        formatted_df = display_df[display_cols].copy()
+                        
+                        # Format numerical columns
+                        formatted_df['Price'] = formatted_df['Price'].apply(lambda x: f"₹{x:,.2f}" if pd.notna(x) and x > 0 else "N/A")
+                        formatted_df['Fair Value'] = formatted_df['Fair Value'].apply(lambda x: f"₹{x:,.2f}" if pd.notna(x) and x > 0 else "N/A")
+                        formatted_df['Upside %'] = formatted_df['Upside %'].apply(lambda x: f"{x:+.1f}%" if pd.notna(x) else "N/A")
+                        formatted_df['PE Ratio'] = formatted_df['PE Ratio'].apply(lambda x: f"{x:.2f}" if pd.notna(x) and x > 0 else "N/A")
+                        formatted_df['From 52W High %'] = formatted_df['From 52W High %'].apply(lambda x: f"{x:+.1f}%" if pd.notna(x) else "N/A")
+                        
+                        st.markdown(f"**📈 Results (sorted by {sort_by}):**")
+                        
+                        st.dataframe(
+                            formatted_df,
+                            use_container_width=True,
+                            hide_index=True,
+                            height=400
+                        )
+                    else:
+                        st.warning("No successful data retrieval for this sector")
+            
+            # Download option
+            st.markdown("---")
+            
+            # Combine all sector data for download
+            all_data = []
+            for sector, sector_df in sector_results.items():
+                sector_df_copy = sector_df.copy()
+                sector_df_copy['Sector'] = sector
+                all_data.append(sector_df_copy)
+            
+            if all_data:
+                combined_df = pd.concat(all_data, ignore_index=True)
+                csv = combined_df.to_csv(index=False)
+                st.download_button(
+                    "📥 Download Complete Analysis (CSV)",
+                    data=csv,
+                    file_name=f"NYZTrade_Complete_Analysis_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                    mime="text/csv",
+                    use_container_width=True
                 )
         
-        # Download option
-        st.markdown("---")
-        
-        # Combine all sector data for download
-        all_data = []
-        for sector, sector_df in sector_results.items():
-            sector_df_copy = sector_df.copy()
-            sector_df_copy['Sector'] = sector
-            all_data.append(sector_df_copy)
-        
-        if all_data:
-            combined_df = pd.concat(all_data, ignore_index=True)
-            csv = combined_df.to_csv(index=False)
-            st.download_button(
-                "📥 Download Complete Sector Analysis with Fair Values (CSV)",
-                data=csv,
-                file_name=f"NYZTrade_Sector_FairValue_Analysis_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
-                mime="text/csv",
-                use_container_width=True
-            )
+        else:
+            st.warning("❌ No sector results generated")
     
-    else:
-        st.warning("❌ No data retrieved for the selected sectors. Please try different sectors or check your internet connection.")
+    elif run_analysis and not selected_sectors:
+        st.warning("⚠️ Please select at least one sector to analyze.")
 
-elif run_analysis and not selected_sectors:
-    st.warning("⚠️ Please select at least one sector to analyze.")
+else:  # Individual Stock Analysis Mode
+    if analyze_stock and 'selected_stock' in st.session_state:
+        stock_info = st.session_state.selected_stock
+        
+        with st.spinner(f"🔄 Analyzing {stock_info['ticker']}..."):
+            analysis, error = analyze_individual_stock(stock_info['ticker'], stock_info['sector'])
+        
+        if analysis:
+            # Display analysis
+            st.markdown(f'''
+            <div class="highlight-box">
+                <h2>{analysis['company']}</h2>
+                <div style="display: flex; flex-wrap: wrap; gap: 20px; color: #a78bfa;">
+                    <span>🏷️ <strong>{analysis['ticker']}</strong></span>
+                    <span>🏢 <strong>{analysis['sector']}</strong></span>
+                    <span>💼 <strong>{analysis['cap_type']}</strong></span>
+                </div>
+            </div>
+            ''', unsafe_allow_html=True)
+            
+            # Main valuation summary
+            col1, col2 = st.columns([2, 1])
+            
+            with col1:
+                fair_value = analysis['avg_fair_value'] if analysis['avg_fair_value'] else analysis['price']
+                upside = analysis['avg_upside'] if analysis['avg_upside'] else 0
+                
+                st.markdown(f'''
+                <div class="metric-card">
+                    <h3>📊 Valuation Summary</h3>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 15px 0;">
+                        <div>
+                            <div style="font-size: 1.8rem; font-weight: bold; color: #a78bfa;">₹{fair_value:,.2f}</div>
+                            <div style="color: #94a3b8;">Fair Value</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 1.8rem; font-weight: bold; color: #e2e8f0;">₹{analysis["price"]:,.2f}</div>
+                            <div style="color: #94a3b8;">Current Price</div>
+                        </div>
+                    </div>
+                    <div style="text-align: center; margin-top: 15px;">
+                        <span style="font-size: 1.5rem; font-weight: bold; color: {'#34d399' if upside > 0 else '#f87171'};">
+                            {"📈" if upside > 0 else "📉"} {upside:+.1f}% Potential
+                        </span>
+                    </div>
+                </div>
+                ''', unsafe_allow_html=True)
+            
+            with col2:
+                # Recommendation
+                if upside > 25:
+                    rec_class, rec_text, rec_icon = "rec-strong-buy", "Strong Buy", "🚀"
+                elif upside > 15:
+                    rec_class, rec_text, rec_icon = "rec-buy", "Buy", "✅"
+                elif upside > 0:
+                    rec_class, rec_text, rec_icon = "rec-buy", "Hold", "📥"
+                elif upside > -10:
+                    rec_class, rec_text, rec_icon = "rec-hold", "Weak Hold", "⏸️"
+                else:
+                    rec_class, rec_text, rec_icon = "rec-avoid", "Avoid", "⚠️"
+                
+                st.markdown(f'''
+                <div class="recommendation {rec_class}">
+                    <div style="font-size: 2rem; margin-bottom: 10px;">{rec_icon}</div>
+                    <div style="font-size: 1.3rem; font-weight: bold;">{rec_text}</div>
+                    <div style="font-size: 0.9rem; margin-top: 5px;">Expected: {upside:+.1f}%</div>
+                </div>
+                ''', unsafe_allow_html=True)
+            
+            # Key metrics
+            col1, col2, col3, col4, col5, col6 = st.columns(6)
+            
+            metrics = [
+                (col1, "💰", f"₹{analysis['price']:,.2f}", "Current Price"),
+                (col2, "📈", f"{analysis['trailing_pe']:.2f}" if analysis['trailing_pe'] else "N/A", "PE Ratio"),
+                (col3, "📚", f"{analysis['pb_ratio']:.2f}" if analysis['pb_ratio'] else "N/A", "P/B Ratio"),
+                (col4, "🏦", f"₹{analysis['market_cap']/10000000:,.0f}Cr" if analysis['market_cap'] else "N/A", "Market Cap"),
+                (col5, "💵", f"{analysis['dividend_yield']*100:.2f}%" if analysis['dividend_yield'] else "N/A", "Dividend Yield"),
+                (col6, "📊", f"{analysis['beta']:.2f}" if analysis['beta'] else "N/A", "Beta")
+            ]
+            
+            for col, icon, value, label in metrics:
+                with col:
+                    st.markdown(f'''
+                    <div class="metric-card" style="text-align: center; padding: 15px;">
+                        <div style="font-size: 1.5rem; margin-bottom: 5px;">{icon}</div>
+                        <div style="font-size: 1.2rem; font-weight: bold; color: #a78bfa; margin-bottom: 5px;">{value}</div>
+                        <div style="font-size: 0.9rem; color: #94a3b8;">{label}</div>
+                    </div>
+                    ''', unsafe_allow_html=True)
+            
+            # Valuation gauges
+            if analysis['upside_pe'] is not None or analysis['upside_ev'] is not None:
+                st.markdown('<div class="section-header">📊 Valuation Analysis</div>', unsafe_allow_html=True)
+                fig_gauge = create_gauge_chart(
+                    analysis['upside_pe'] if analysis['upside_pe'] else 0,
+                    analysis['upside_ev'] if analysis['upside_ev'] else 0
+                )
+                st.plotly_chart(fig_gauge, use_container_width=True)
+            
+            # 52-week performance
+            if analysis['pct_from_high'] is not None:
+                st.markdown('<div class="section-header">📍 52-Week Performance</div>', unsafe_allow_html=True)
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    st.metric("Distance from 52W High", f"{-analysis['pct_from_high']:+.1f}%")
+                    st.metric("Distance from 52W Low", f"{analysis['pct_from_low']:+.1f}%")
+                
+                with col2:
+                    st.metric("52W High", f"₹{analysis['high_52w']:,.2f}")
+                    st.metric("52W Low", f"₹{analysis['low_52w']:,.2f}")
+        
+        elif error:
+            st.error(f"❌ Error analyzing {stock_info['ticker']}: {error}")
+    
+    elif analyze_stock:
+        st.warning("⚠️ Please select a stock first")
 
 # Footer
 st.markdown('''
 <div style="margin-top: 50px; padding: 30px; background: rgba(30, 41, 59, 0.4); border-radius: 15px; text-align: center;">
-    <h4 style="color: #a78bfa; margin-bottom: 15px;">NYZTrade Pro | Complete Sector Analysis with Fair Value</h4>
+    <h4 style="color: #a78bfa; margin-bottom: 15px;">NYZTrade Pro | Complete Stock Analysis Platform</h4>
     <div class="disclaimer">
         ⚠️ <strong>Important Disclaimer:</strong> This platform is designed for educational and informational purposes only. 
         Fair value calculations are based on industry benchmarks and should not be considered as investment advice. 
         Always conduct your own research and consult with qualified financial professionals before making any investment decisions.
     </div>
     <div style="margin-top: 15px; color: #64748b; font-size: 0.9rem;">
-        © 2024 NYZTrade | Advanced Sector Analysis | Market data provided by Yahoo Finance
+        © 2024 NYZTrade | Complete Analysis Platform | Market data provided by Yahoo Finance
     </div>
 </div>
 ''', unsafe_allow_html=True)
