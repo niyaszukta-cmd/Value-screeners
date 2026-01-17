@@ -444,7 +444,7 @@ DEFAULT_BENCHMARKS = {
 # ============================================================================
 
 @st.cache_data(ttl=21600)  # Cache for 6 hours
-def calculate_dynamic_sector_benchmarks(sector, sample_size=30, progress_callback=None):
+def calculate_dynamic_sector_benchmarks(sector, sample_size=30, _progress_callback=None):
     """
     Calculate dynamic sector benchmarks by analyzing actual sector data
     Excludes outliers using IQR method for more accurate averages
@@ -476,8 +476,8 @@ def calculate_dynamic_sector_benchmarks(sector, sample_size=30, progress_callbac
         roe_values = []
         
         for i, (ticker, name) in enumerate(stock_items):
-            if progress_callback:
-                progress_callback(f"Analyzing {sector} benchmarks: {i+1}/{len(stock_items)}", i/len(stock_items))
+            if _progress_callback:
+                _progress_callback(f"Analyzing {sector} benchmarks: {i+1}/{len(stock_items)}", i/len(stock_items))
             
             # Fetch stock data
             info, error = fetch_stock_data(ticker)
@@ -1030,7 +1030,7 @@ def run_dynamic_sector_screener(sector, criteria, limit=25, use_dynamic_benchmar
             benchmark_progress.progress(progress)
         
         benchmark_status.text(f"🧮 Calculating dynamic benchmarks for {sector}...")
-        benchmarks = calculate_dynamic_sector_benchmarks(sector, sample_size=30, progress_callback=benchmark_callback)
+        benchmarks = calculate_dynamic_sector_benchmarks(sector, sample_size=30, _progress_callback=benchmark_callback)
         
         benchmark_progress.empty()
         benchmark_status.empty()
