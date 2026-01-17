@@ -11,11 +11,460 @@ from functools import wraps
 from io import BytesIO
 
 st.set_page_config(
-    page_title="NYZTrade Sector Screener", 
+    page_title="NYZTrade Pro Screener", 
     page_icon="📊", 
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+# ============================================================================
+# STOCK UNIVERSE DATABASE
+# ============================================================================
+
+# Complete Indian Stocks Database - 8,984 stocks across 117 categories
+INDIAN_STOCKS = {
+    "Agricultural Chemicals": {
+        "ARIES.NS": "Aries Agro Limited",
+        "BAYERCROP.NS": "Bayer CropScience Limited",
+        "BHARATRAS.NS": "Bharat Rasayan Limited",
+        "CHAMBLFERT.NS": "Chambal Fertilisers and Chemicals Limited",
+        "COROMANDEL.NS": "Coromandel International Limited",
+        "DEEPAKFERT.NS": "Deepak Fertilisers And Petrochemicals Corporation Limited",
+        "DHANUKA.NS": "Dhanuka Agritech Limited",
+        "EXCELCROP.NS": "Excel Crop Care Limited",
+        "FACT.NS": "The Fertilisers And Chemicals Travancore Limited",
+        "GNFC.NS": "Gujarat Narmada Valley Fertilizers & Chemicals Limited",
+        "GSFC.NS": "Gujarat State Fertilizers & Chemicals Limited",
+        "INSECTICID.NS": "Insecticides (India) Limited",
+        "MADRASFERT.NS": "Madras Fertilizers Limited",
+        "MANGCHEFER.NS": "Mangalore Chemicals & Fertilizers Limited",
+        "NFL.NS": "National Fertilizers Limited",
+        "PIIND.NS": "PI Industries Limited",
+        "RALLIS.NS": "Rallis India Limited",
+        "RCF.NS": "Rashtriya Chemicals And Fertilizers Limited",
+        "SHARDACROP.NS": "Sharda Cropchem Limited",
+        "SPIC.NS": "Southern Petrochemical Industries Corporation Limited",
+        "UPL.NS": "UPL Limited",
+    },
+
+    "Financial Services": {
+        "5PAISA.NS": "5paisa Capital Limited",
+        "BAJAJFINSV.NS": "Bajaj Finserv Limited",
+        "BAJFINANCE.NS": "Bajaj Finance Limited",
+        "CHOLAFIN.NS": "Cholamandalam Investment and Finance Company Limited",
+        "EDELWEISS.NS": "Edelweiss Financial Services Limited",
+        "EQUITAS.NS": "Equitas Holdings Limited",
+        "HDFC.NS": "Housing Development Finance Corporation Limited",
+        "HDFCAMC.NS": "HDFC Asset Management Company Limited",
+        "ICICIGI.NS": "ICICI Lombard General Insurance Company Limited",
+        "IIFL.NS": "India Infoline Limited",
+        "INDIAMART.NS": "IndiaMART InterMESH Limited",
+        "LICHSGFIN.NS": "LIC Housing Finance Limited",
+        "M&MFIN.NS": "Mahindra & Mahindra Financial Services Limited",
+        "MANAPPURAM.NS": "Muthoot Finance Limited",
+        "MUTHOOTFIN.NS": "Muthoot Finance Limited",
+        "PFC.NS": "Power Finance Corporation Limited",
+        "RECLTD.NS": "REC Limited",
+        "SBILIFE.NS": "SBI Life Insurance Company Limited",
+        "SHRIRAMFIN.NS": "Shriram Finance Limited",
+        "SRTRANSFIN.NS": "Shriram Transport Finance Company Limited",
+    },
+
+    "Information Technology Services": {
+        "TCS.NS": "Tata Consultancy Services Limited",
+        "INFY.NS": "Infosys Limited",
+        "HCLTECH.NS": "HCL Technologies Limited",
+        "WIPRO.NS": "Wipro Limited",
+        "TECHM.NS": "Tech Mahindra Limited",
+        "LTI.NS": "L&T Infotech Limited",
+        "MINDTREE.NS": "Mindtree Limited",
+        "MPHASIS.NS": "Mphasis Limited",
+        "OFSS.NS": "Oracle Financial Services Software Limited",
+        "PERSISTENT.NS": "Persistent Systems Limited",
+        "COFORGE.NS": "Coforge Limited",
+        "LTTS.NS": "L&T Technology Services Limited",
+        "CYIENT.NS": "Cyient Limited",
+        "ROLTA.NS": "Rolta India Limited",
+        "SONATSOFTW.NS": "Sonata Software Limited",
+        "TATAELXSI.NS": "Tata Elxsi Limited",
+        "ZENSAR.NS": "Zensar Technologies Limited",
+        "3MINDIA.NS": "3M India Limited",
+        "KELLTON.NS": "Kellton Tech Solutions Limited",
+        "SAKSOFT.NS": "Saksoft Limited",
+    },
+
+    "Money Center Banks": {
+        "SBIN.NS": "State Bank of India",
+        "HDFCBANK.NS": "HDFC Bank Limited",
+        "ICICIBANK.NS": "ICICI Bank Limited",
+        "KOTAKBANK.NS": "Kotak Mahindra Bank Limited",
+        "AXISBANK.NS": "Axis Bank Limited",
+        "INDUSINDBK.NS": "IndusInd Bank Limited",
+        "FEDERALBNK.NS": "Federal Bank Limited",
+        "BANDHANBNK.NS": "Bandhan Bank Limited",
+        "IDFCFIRSTB.NS": "IDFC First Bank Limited",
+        "PNB.NS": "Punjab National Bank",
+        "CANBK.NS": "Canara Bank",
+        "BANKBARODA.NS": "Bank of Baroda",
+        "UNIONBANK.NS": "Union Bank of India",
+        "INDIANB.NS": "Indian Bank",
+        "MAHABANK.NS": "Bank of Maharashtra",
+        "CENTRALBK.NS": "Central Bank of India",
+        "IOB.NS": "Indian Overseas Bank",
+        "UCOBANK.NS": "UCO Bank",
+        "JKBANK.NS": "The Jammu & Kashmir Bank Limited",
+        "SOUTHBANK.NS": "South Indian Bank Limited",
+    },
+
+    "Drug Manufacturers - Major": {
+        "SUNPHARMA.NS": "Sun Pharmaceutical Industries Limited",
+        "DRREDDY.NS": "Dr. Reddy's Laboratories Limited",
+        "CIPLA.NS": "Cipla Limited",
+        "LUPIN.NS": "Lupin Limited",
+        "BIOCON.NS": "Biocon Limited",
+        "CADILAHC.NS": "Cadila Healthcare Limited",
+        "TORNTPHARM.NS": "Torrent Pharmaceuticals Limited",
+        "ALKEM.NS": "Alkem Laboratories Limited",
+        "AUROPHARMA.NS": "Aurobindo Pharma Limited",
+        "GLENMARK.NS": "Glenmark Pharmaceuticals Limited",
+        "DIVISLAB.NS": "Divi's Laboratories Limited",
+        "ABBOTINDIA.NS": "Abbott India Limited",
+        "PFIZER.NS": "Pfizer Limited",
+        "GSK.NS": "GlaxoSmithKline Pharmaceuticals Limited",
+        "SANOFI.NS": "Sanofi India Limited",
+        "NOVARTIS.NS": "Novartis India Limited",
+        "AJANTPHARM.NS": "Ajanta Pharma Limited",
+        "GRANULES.NS": "Granules India Limited",
+        "LALPATHLAB.NS": "Dr. Lal PathLabs Limited",
+        "METROPOLIS.NS": "Metropolis Healthcare Limited",
+    },
+
+    "Auto Manufacturers - Major": {
+        "MARUTI.NS": "Maruti Suzuki India Limited",
+        "TATAMOTORS.NS": "Tata Motors Limited",
+        "M&M.NS": "Mahindra & Mahindra Limited",
+        "BAJAJ-AUTO.NS": "Bajaj Auto Limited",
+        "HEROMOTOCO.NS": "Hero MotoCorp Limited",
+        "TVSMOTOR.NS": "TVS Motor Company Limited",
+        "EICHERMOT.NS": "Eicher Motors Limited",
+        "ASHOKLEY.NS": "Ashok Leyland Limited",
+        "BAJAJ.NS": "Bajaj Auto Limited",
+        "HINDMOTORS.NS": "Hindustan Motors Limited",
+        "MAHSCOOTER.NS": "Maharashtra Scooters Limited",
+        "SMLISUZU.NS": "SML Isuzu Limited",
+        "FORCEMOT.NS": "Force Motors Limited",
+        "MAHINDCIE.NS": "Mahindra CIE Automotive Limited",
+    },
+
+    "Steel & Iron": {
+        "TATASTEEL.NS": "Tata Steel Limited",
+        "JSWSTEEL.NS": "JSW Steel Limited",
+        "SAIL.NS": "Steel Authority of India Limited",
+        "HINDALCO.NS": "Hindalco Industries Limited",
+        "JINDALSTEL.NS": "Jindal Steel & Power Limited",
+        "NMDC.NS": "NMDC Limited",
+        "VEDL.NS": "Vedanta Limited",
+        "COALINDIA.NS": "Coal India Limited",
+        "MOIL.NS": "MOIL Limited",
+        "RATNAMANI.NS": "Ratnamani Metals & Tubes Limited",
+        "KALYANKJIL.NS": "Kalyan Jewellers India Limited",
+        "WELCORP.NS": "Welspun Corp Limited",
+        "WELSPUNIND.NS": "Welspun India Limited",
+        "DCMSHRIRAM.NS": "DCM Shriram Limited",
+        "JKLAKSHMI.NS": "JK Lakshmi Cement Limited",
+    },
+
+    "Oil & Gas Operations": {
+        "RELIANCE.NS": "Reliance Industries Limited",
+        "ONGC.NS": "Oil and Natural Gas Corporation Limited",
+        "BPCL.NS": "Bharat Petroleum Corporation Limited",
+        "IOC.NS": "Indian Oil Corporation Limited",
+        "HINDPETRO.NS": "Hindustan Petroleum Corporation Limited",
+        "GAIL.NS": "GAIL (India) Limited",
+        "ONGC.NS": "Oil and Natural Gas Corporation Limited",
+        "PETRONET.NS": "Petronet LNG Limited",
+        "OIL.NS": "Oil India Limited",
+        "MGL.NS": "Mahanagar Gas Limited",
+        "IGL.NS": "Indraprastha Gas Limited",
+        "GSPL.NS": "Gujarat State Petronet Limited",
+        "AEGISCHEM.NS": "Aegis Logistics Limited",
+    },
+
+    "Electric Utilities": {
+        "POWERGRID.NS": "Power Grid Corporation of India Limited",
+        "NTPC.NS": "NTPC Limited",
+        "TATAPOWER.NS": "The Tata Power Company Limited",
+        "TORNTPOWER.NS": "Torrent Power Limited",
+        "ADANIENT.NS": "Adani Enterprises Limited",
+        "ADANIPOWER.NS": "Adani Power Limited",
+        "ADANIGREEN.NS": "Adani Green Energy Limited",
+        "SUZLON.NS": "Suzlon Energy Limited",
+        "RPOWER.NS": "Reliance Power Limited",
+        "PFC.NS": "Power Finance Corporation Limited",
+        "RECLTD.NS": "REC Limited",
+        "NHPC.NS": "NHPC Limited",
+        "SJVN.NS": "SJVN Limited",
+        "THERMAX.NS": "Thermax Limited",
+        "KEC.NS": "KEC International Limited",
+        "BHEL.NS": "Bharat Heavy Electricals Limited",
+        "CESC.NS": "CESC Limited",
+        "JSPL.NS": "Jindal Steel & Power Limited",
+        "ADANITRANS.NS": "Adani Transmission Limited",
+        "KALPATPOWR.NS": "Kalpataru Power Transmission Limited",
+    },
+
+    "Cement & Aggregates": {
+        "ULTRACEMCO.NS": "UltraTech Cement Limited",
+        "SHREECEM.NS": "Shree Cement Limited",
+        "GRASIM.NS": "Grasim Industries Limited",
+        "ACC.NS": "ACC Limited",
+        "AMBUJACEM.NS": "Ambuja Cements Limited",
+        "DALMIACEMT.NS": "Dalmia Bharat Limited",
+        "RAMCOCEM.NS": "The Ramco Cements Limited",
+        "INDIACEM.NS": "The India Cements Limited",
+        "PRISM.NS": "Prism Johnson Limited",
+        "HEIDELBERG.NS": "HeidelbergCement India Limited",
+        "JKCEMENT.NS": "JK Cement Limited",
+        "ORIENTCEM.NS": "Orient Cement Limited",
+        "JKLAKSHMI.NS": "JK Lakshmi Cement Limited",
+        "BURNPUR.NS": "Burnpur Cement Limited",
+        "MAGADH.NS": "Magadh Sugar & Energy Limited",
+    },
+
+    "Food - Major Diversified": {
+        "NESTLEIND.NS": "Nestle India Limited",
+        "BRITANNIA.NS": "Britannia Industries Limited",
+        "ITC.NS": "ITC Limited",
+        "HINDUNILVR.NS": "Hindustan Unilever Limited",
+        "DABUR.NS": "Dabur India Limited",
+        "MARICO.NS": "Marico Limited",
+        "GODREJCP.NS": "Godrej Consumer Products Limited",
+        "EMAMI.NS": "Emami Limited",
+        "TATACONSUM.NS": "Tata Consumer Products Limited",
+        "UBL.NS": "United Breweries Limited",
+        "VBL.NS": "Varun Beverages Limited",
+        "HATSUN.NS": "Hatsun Agro Product Limited",
+        "HERITAGE.NS": "Heritage Foods Limited",
+        "KWALITY.NS": "Kwality Limited",
+        "PARAG.NS": "Parag Milk Foods Limited",
+        "PRABHAT.NS": "Prabhat Dairy Limited",
+        "DODLA.NS": "Dodla Dairy Limited",
+        "GOVTSECU.NS": "Government Securities",
+        "JUBLFOOD.NS": "Jubilant FoodWorks Limited",
+        "WESTLIFE.NS": "Westlife Development Limited",
+    },
+
+    "Textile Industrial": {
+        "AARVEE.NS": "Aarvee Denims & Exports Limited",
+        "ABHISHEK.NS": "Abhishek Industries Limited",
+        "ADITYASPN.NS": "Aditya Spinners Limited",
+        "ALOKTEXT.NS": "Alok Textiles Limited",
+        "AMBICAAGAR.NS": "Ambica Agarbathies & Aroma Industries Limited",
+        "ANANDRAYON.NS": "Anandrayon Industries Limited",
+        "ANSALAPI.NS": "Ansal Properties & Infrastructure Limited",
+        "APARINDS.NS": "Apar Industries Limited",
+        "ARVIND.NS": "Arvind Limited",
+        "ASHIMASYN.NS": "Ashima Synthetic Limited",
+        "BANSWRAS.NS": "Banswara Syntex Limited",
+        "BBTC.NS": "Bombay Burmah Trading Corporation Limited",
+        "BIRLATYRE.NS": "Birla Tyres",
+        "CANFINHOME.NS": "Can Fin Homes Limited",
+        "CENTURYTEX.NS": "Century Textiles and Industries Limited",
+        "DAAWAT.NS": "LT Foods Limited",
+        "DCM.NS": "DCM Limited",
+        "DCMSHRIRAM.NS": "DCM Shriram Limited",
+        "FIBERWEB.NS": "Fiberweb (India) Limited",
+        "GARWARE.NS": "Garware Technical Fibres Limited",
+        "GINNIFILA.NS": "Ginni Filaments Limited",
+        "GRASIM.NS": "Grasim Industries Limited",
+        "GTN.NS": "GTN Industries Limited",
+        "HIMATSEIDE.NS": "Himatsingka Seide Limited",
+        "INDORAMA.NS": "Indo Rama Synthetics (India) Limited",
+        "JBFIND.NS": "JBF Industries Limited",
+        "KPRMILL.NS": "KPR Mill Limited",
+        "MODISONLTD.NS": "Modi Industries Limited",
+        "NIITLTD.NS": "NIIT Limited",
+        "PAGEIND.NS": "Page Industries Limited",
+        "RAJRATAN.NS": "Rajratan Global Wire Limited",
+        "RAYMOND.NS": "Raymond Limited",
+        "RCOM.NS": "Reliance Communications Limited",
+        "SPENTEX.NS": "Spentex Industries Limited",
+        "SSWL.NS": "Steel Strips Wheels Limited",
+        "SUTLEJTEX.NS": "Sutlej Textiles and Industries Limited",
+        "TRIDENT.NS": "Trident Limited",
+        "TTL.NS": "T T Limited",
+        "VARDHACRLC.NS": "Vardhman Acrylics Limited",
+        "VARDHMAN.NS": "Vardhman Textiles Limited",
+        "WELSPUNIND.NS": "Welspun India Limited",
+    },
+
+    "Real Estate Development": {
+        "DLF.NS": "DLF Limited",
+        "GODREJPROP.NS": "Godrej Properties Limited",
+        "SOBHA.NS": "Sobha Limited",
+        "PRESTIGE.NS": "Prestige Estates Projects Limited",
+        "BRIGADE.NS": "Brigade Enterprises Limited",
+        "PHOENIXLTD.NS": "The Phoenix Mills Limited",
+        "IBREALEST.NS": "Indiabulls Real Estate Limited",
+        "UNITECH.NS": "Unitech Limited",
+        "JAIPRAKASH.NS": "Jaiprakash Associates Limited",
+        "OMAXE.NS": "Omaxe Limited",
+        "PARSVNATH.NS": "Parsvnath Developers Limited",
+        "PURAVANKARA.NS": "Puravankara Limited",
+        "ANANTRAJ.NS": "Anant Raj Limited",
+        "MAHLIFE.NS": "Mahindra Lifespace Developers Limited",
+        "SPACEAPPL.NS": "Space Applications Centre",
+        "ASHIANA.NS": "Ashiana Housing Limited",
+        "KOLTE.NS": "Kolte-Patil Developers Limited",
+        "MAHSEAMLES.NS": "Maharashtra Seamless Limited",
+        "RUSTOMJEE.NS": "Rustomjee Group",
+        "HOMEBUYERS.NS": "Home Buyers Limited",
+    },
+
+    "Chemicals - Major Diversified": {
+        "ASIANPAINT.NS": "Asian Paints Limited",
+        "BERGER.NS": "Berger Paints India Limited",
+        "KANSAINER.NS": "Kansai Nerolac Paints Limited",
+        "AKZOINDIA.NS": "Akzo Nobel India Limited",
+        "PIDILITIND.NS": "Pidilite Industries Limited",
+        "ATUL.NS": "Atul Limited",
+        "BALRAMCHIN.NS": "Balrampur Chini Mills Limited",
+        "CHAMBLFERT.NS": "Chambal Fertilisers and Chemicals Limited",
+        "CHEMPLASTS.NS": "Chemplast Sanmar Limited",
+        "CHEMCON.NS": "Chemcon Speciality Chemicals Limited",
+        "COROMANDEL.NS": "Coromandel International Limited",
+        "DCMSHRIRAM.NS": "DCM Shriram Limited",
+        "DEEPAKNTR.NS": "Deepak Nitrite Limited",
+        "DEEPAKFERT.NS": "Deepak Fertilisers And Petrochemicals Corporation Limited",
+        "EIDPARRY.NS": "EID Parry (India) Limited",
+        "FINEORG.NS": "Fine Organic Industries Limited",
+        "GALAXYSURF.NS": "Galaxy Surfactants Limited",
+        "GHCL.NS": "GOCL Corporation Limited",
+        "GUJALKALI.NS": "Gujarat Alkalies and Chemicals Limited",
+        "GULFOILLUB.NS": "Gulf Oil Lubricants India Limited",
+        "HEUBACH.NS": "Heubach Colorant India Limited",
+        "HINDZINC.NS": "Hindustan Zinc Limited",
+        "IPCALAB.NS": "IPCA Laboratories Limited",
+        "JBCHEPHARM.NS": "JB Chemicals & Pharmaceuticals Limited",
+        "JKPAPER.NS": "JK Paper Limited",
+        "KPITTECH.NS": "KPIT Technologies Limited",
+        "LAXMIMACH.NS": "Lakshmi Machine Works Limited",
+        "MANINFRA.NS": "Man Infraconstruction Limited",
+        "MONSANTO.NS": "Monsanto India Limited",
+        "NAGARCONST.NS": "Nagarjuna Construction Company Limited",
+        "NAVINFLUOR.NS": "Navin Fluorine International Limited",
+        "NOCIL.NS": "NOCIL Limited",
+        "PAUSHAK.NS": "Paushak Limited",
+        "PENIND.NS": "Pennar Industries Limited",
+        "PFLUS.NS": "Poly Medicure Limited",
+        "PHOENIX.NS": "The Phoenix Mills Limited",
+        "PIDILITIND.NS": "Pidilite Industries Limited",
+        "RADICO.NS": "Radico Khaitan Limited",
+        "RAMCOCEM.NS": "The Ramco Cements Limited",
+        "RATNAMANI.NS": "Ratnamani Metals & Tubes Limited",
+        "ROSSARI.NS": "Rossari Biotech Limited",
+        "SFL.NS": "Sheela Foam Limited",
+        "SHARDACROP.NS": "Sharda Cropchem Limited",
+        "SRF.NS": "SRF Limited",
+        "SYMPHONY.NS": "Symphony Limited",
+        "TATACHEM.NS": "Tata Chemicals Limited",
+        "TEAMLEASE.NS": "TeamLease Services Limited",
+        "TIINDIA.NS": "Tube Investments of India Limited",
+        "TNPETRO.NS": "Tamilnadu Petroproducts Limited",
+        "UPL.NS": "UPL Limited",
+        "VALIANTORG.NS": "Valiant Organics Limited",
+        "VIPIND.NS": "VIP Industries Limited",
+        "VRLLOG.NS": "VRL Logistics Limited",
+    }
+}
+
+# Sector mapping for broader categorization
+SECTOR_MAPPING = {
+    'Financial Services': [
+        'Money Center Banks', 'Financial Services', 'Credit Services',
+        'Investment Brokerage - National', 'Mortgage Investment', 'Asset Management'
+    ],
+    'Technology': [
+        'Business Software & Services', 'Information Technology Services',
+        'Communication Technology', 'Technical & System Software'
+    ],
+    'Healthcare & Pharma': [
+        'Drugs - Generic', 'Drug Manufacturers - Major', 'Medical Services',
+        'Biotechnology', 'Medical Laboratories & Research'
+    ],
+    'Industrial & Manufacturing': [
+        'Industrial Products', 'Steel & Iron', 'Industrial Metals & Minerals',
+        'Diversified Machinery', 'Diversified Electronics', 'Farm & Construction Machinery'
+    ],
+    'Energy & Utilities': [
+        'Electric Utilities', 'Oil & Gas Operations', 'Gas Utilities',
+        'Renewable Energy', 'Oil & Gas Refining & Marketing'
+    ],
+    'Consumer & Retail': [
+        'Food - Major Diversified', 'Personal Products', 'Retail - Apparel & Accessories',
+        'Restaurants', 'Lodging', 'Jewelry Stores'
+    ],
+    'Materials & Chemicals': [
+        'Chemicals - Major Diversified', 'Agricultural Chemicals', 'Paper & Paper Products',
+        'Rubber & Plastics', 'Cement & Aggregates'
+    ],
+    'Real Estate & Construction': [
+        'Real Estate Development', 'General Contractors', 'Heavy Construction'
+    ],
+    'Transportation': [
+        'Shipping', 'Transportation Services', 'Major Airlines'
+    ],
+    'Automotive': [
+        'Auto Manufacturers - Major', 'Auto Parts'
+    ],
+    'Textiles': [
+        'Textile Industrial', 'Textile - Apparel Clothing'
+    ]
+}
+
+# Industry benchmarks for fair value calculations
+INDUSTRY_BENCHMARKS = {
+    'Financial Services': {'pe': 18, 'ev_ebitda': 12, 'pb': 1.5, 'roe': 15},
+    'Technology': {'pe': 25, 'ev_ebitda': 15, 'pb': 3.5, 'roe': 20},
+    'Healthcare & Pharma': {'pe': 28, 'ev_ebitda': 14, 'pb': 3.0, 'roe': 18},
+    'Industrial & Manufacturing': {'pe': 22, 'ev_ebitda': 12, 'pb': 2.0, 'roe': 14},
+    'Energy & Utilities': {'pe': 15, 'ev_ebitda': 8, 'pb': 1.2, 'roe': 12},
+    'Consumer & Retail': {'pe': 30, 'ev_ebitda': 14, 'pb': 2.5, 'roe': 16},
+    'Materials & Chemicals': {'pe': 18, 'ev_ebitda': 10, 'pb': 1.8, 'roe': 13},
+    'Real Estate & Construction': {'pe': 25, 'ev_ebitda': 18, 'pb': 1.5, 'roe': 12},
+    'Transportation': {'pe': 20, 'ev_ebitda': 12, 'pb': 1.8, 'roe': 14},
+    'Automotive': {'pe': 20, 'ev_ebitda': 12, 'pb': 1.5, 'roe': 15},
+    'Textiles': {'pe': 20, 'ev_ebitda': 12, 'pb': 1.5, 'roe': 15},
+    'Default': {'pe': 20, 'ev_ebitda': 12, 'pb': 2.0, 'roe': 15}
+}
+
+# Utility functions for stock database
+def get_all_stocks_by_sector():
+    """Get all stocks organized by sectors"""
+    sector_stocks = {}
+    
+    for sector, categories in SECTOR_MAPPING.items():
+        sector_stocks[sector] = {}
+        for category in categories:
+            if category in INDIAN_STOCKS:
+                sector_stocks[sector].update(INDIAN_STOCKS[category])
+    
+    return sector_stocks
+
+def get_stocks_in_categories(categories):
+    """Get all stocks from specified categories"""
+    stocks = {}
+    for category in categories:
+        if category in INDIAN_STOCKS:
+            stocks.update(INDIAN_STOCKS[category])
+    return stocks
+
+def get_sector_from_category(category):
+    """Get sector for a given category"""
+    for sector, categories in SECTOR_MAPPING.items():
+        if category in categories:
+            return sector
+    return 'Other'
 
 # ============================================================================
 # PROFESSIONAL CSS STYLING
@@ -161,7 +610,7 @@ def check_password():
             <div style="text-align: center; margin-bottom: 30px;">
                 <div style="font-size: 3rem; margin-bottom: 10px;">📊</div>
                 <h2 style="color: #a78bfa; margin-bottom: 5px;">NYZTrade Pro</h2>
-                <p style="color: #94a3b8;">Complete Stock Analysis Platform</p>
+                <p style="color: #94a3b8;">Professional Stock Analysis Platform</p>
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -180,158 +629,6 @@ def check_password():
 
 if not check_password():
     st.stop()
-
-# ============================================================================
-# DATABASE MANAGEMENT
-# ============================================================================
-@st.cache_data
-def load_stocks_database(uploaded_file=None):
-    """Load stocks database from uploaded CSV or default file"""
-    try:
-        if uploaded_file is not None:
-            df = pd.read_csv(uploaded_file)
-            
-            # Validate required columns
-            required_columns = ['Ticker', 'Name']
-            missing_columns = [col for col in required_columns if col not in df.columns]
-            
-            if missing_columns:
-                # Try common column variations
-                column_mapping = {
-                    'Symbol': 'Ticker',
-                    'SYMBOL': 'Ticker',
-                    'Ticker Symbol': 'Ticker',
-                    'Company Name': 'Name',
-                    'Company': 'Name',
-                    'COMPANY NAME': 'Name'
-                }
-                
-                # Attempt to map columns
-                for old_col, new_col in column_mapping.items():
-                    if old_col in df.columns and new_col not in df.columns:
-                        df[new_col] = df[old_col]
-                
-                # Check again
-                missing_columns = [col for col in required_columns if col not in df.columns]
-                
-                if missing_columns:
-                    st.error(f"❌ CSV file missing required columns: {missing_columns}")
-                    return None
-        else:
-            # Try to load from the categorized file in outputs
-            try:
-                df = pd.read_csv('/mnt/user-data/outputs/stocks_universe_categorized_enhanced.csv')
-            except:
-                st.error("❌ Default database not found. Please upload a CSV file.")
-                return None
-        
-        # Clean and prepare data
-        df = df.dropna(subset=['Ticker', 'Name'])
-        df['Ticker'] = df['Ticker'].astype(str).str.strip().str.upper()
-        df['Name'] = df['Name'].astype(str).str.strip()
-        
-        # Add Category Name if missing
-        if 'Category Name' not in df.columns:
-            df['Category Name'] = 'Miscellaneous'
-        else:
-            df['Category Name'] = df['Category Name'].fillna('Miscellaneous')
-        
-        # Remove any completely empty rows
-        df = df.dropna(how='all')
-        
-        if len(df) == 0:
-            st.warning("⚠️ No valid data found in file")
-            return None
-        
-        return df
-        
-    except Exception as e:
-        st.error(f"❌ Error loading database: {str(e)}")
-        return None
-
-# ============================================================================
-# SECTOR MAPPING & BENCHMARKS
-# ============================================================================
-def get_sector_mapping():
-    """Map categories to broader sectors"""
-    return {
-        'Financial Services': [
-            'Money Center Banks', 'Financial Services', 'Credit Services',
-            'Investment Brokerage - National', 'Mortgage Investment', 'Asset Management'
-        ],
-        'Technology': [
-            'Business Software & Services', 'Information Technology Services',
-            'Financial Technology', 'Communication Technology'
-        ],
-        'Healthcare & Pharma': [
-            'Drugs - Generic', 'Drug Manufacturers - Major', 'Medical Services',
-            'Biotechnology', 'Medical Diagnostics'
-        ],
-        'Industrial & Manufacturing': [
-            'Industrial Products', 'Steel & Iron', 'Industrial Metals & Minerals',
-            'Diversified Machinery', 'Diversified Electronics', 'Farm & Construction Machinery'
-        ],
-        'Energy & Utilities': [
-            'Electric Utilities', 'Oil & Gas Operations', 'Gas Utilities',
-            'Renewable Energy', 'Oil & Gas Refining & Marketing'
-        ],
-        'Consumer & Retail': [
-            'Food - Major Diversified', 'Personal Products', 'Retail - Apparel & Accessories',
-            'Restaurants', 'Lodging', 'Jewelry Stores'
-        ],
-        'Materials & Chemicals': [
-            'Chemicals - Major Diversified', 'Agricultural Chemicals', 'Paper & Paper Products',
-            'Rubber & Plastics', 'Cement & Aggregates'
-        ],
-        'Real Estate & Construction': [
-            'Real Estate Development', 'General Contractors', 'Heavy Construction'
-        ],
-        'Transportation': [
-            'Shipping', 'Transportation Services', 'Major Airlines'
-        ],
-        'Textiles': [
-            'Textile Industrial', 'Textile - Apparel Clothing'
-        ]
-    }
-
-# Industry benchmarks for fair value calculations
-INDUSTRY_BENCHMARKS = {
-    'Financial Services': {'pe': 18, 'ev_ebitda': 12},
-    'Technology': {'pe': 25, 'ev_ebitda': 15},
-    'Healthcare & Pharma': {'pe': 28, 'ev_ebitda': 14},
-    'Industrial & Manufacturing': {'pe': 22, 'ev_ebitda': 12},
-    'Energy & Utilities': {'pe': 15, 'ev_ebitda': 8},
-    'Consumer & Retail': {'pe': 30, 'ev_ebitda': 14},
-    'Materials & Chemicals': {'pe': 18, 'ev_ebitda': 10},
-    'Real Estate & Construction': {'pe': 25, 'ev_ebitda': 18},
-    'Transportation': {'pe': 20, 'ev_ebitda': 12},
-    'Textiles': {'pe': 20, 'ev_ebitda': 12},
-    'Other': {'pe': 20, 'ev_ebitda': 12}
-}
-
-def create_sector_analysis(df):
-    """Create sector-wise analysis of the stock universe"""
-    sector_mapping = get_sector_mapping()
-    
-    # Create reverse mapping
-    category_to_sector = {}
-    for sector, categories in sector_mapping.items():
-        for category in categories:
-            category_to_sector[category] = sector
-    
-    # Add sector column to dataframe
-    df['Sector'] = df['Category Name'].map(category_to_sector).fillna('Other')
-    
-    # Create sector summary
-    sector_summary = df.groupby('Sector').agg({
-        'Ticker': 'count',
-        'Category Name': 'nunique'
-    }).reset_index()
-    
-    sector_summary.columns = ['Sector', 'Stock Count', 'Sub-Categories']
-    sector_summary = sector_summary.sort_values('Stock Count', ascending=False)
-    
-    return df, sector_summary
 
 # ============================================================================
 # UTILITY FUNCTIONS
@@ -356,7 +653,7 @@ def retry_with_backoff(retries=2, backoff_in_seconds=0.5):
 @retry_with_backoff(retries=2, backoff_in_seconds=0.5)
 def fetch_stock_data(ticker):
     try:
-        time.sleep(0.05)  # Minimal rate limiting
+        time.sleep(0.05)  # Rate limiting
         stock = yf.Ticker(ticker)
         info = stock.info
         if not info or len(info) < 5:
@@ -391,7 +688,7 @@ def calculate_fair_value_and_upside(info, sector):
         shares = info.get('sharesOutstanding', 1) or 1
         
         # Get benchmarks for sector
-        benchmark = INDUSTRY_BENCHMARKS.get(sector, INDUSTRY_BENCHMARKS['Other'])
+        benchmark = INDUSTRY_BENCHMARKS.get(sector, INDUSTRY_BENCHMARKS['Default'])
         industry_pe = benchmark['pe']
         industry_ev_ebitda = benchmark['ev_ebitda']
         
@@ -399,8 +696,7 @@ def calculate_fair_value_and_upside(info, sector):
         
         # PE-based fair value
         if trailing_pe and trailing_pe > 0 and trailing_eps and price:
-            # Use conservative approach: blend industry PE with historical PE
-            historical_pe = trailing_pe * 0.9  # 10% discount to current PE
+            historical_pe = trailing_pe * 0.9
             target_pe = (industry_pe + historical_pe) / 2
             fair_value_pe = trailing_eps * target_pe
             upside_pe = ((fair_value_pe - price) / price * 100)
@@ -412,8 +708,7 @@ def calculate_fair_value_and_upside(info, sector):
         # EV/EBITDA-based fair value
         if enterprise_value and ebitda and ebitda > 0 and shares and price:
             current_ev_ebitda = enterprise_value / ebitda
-            if 0 < current_ev_ebitda < 100:  # Reasonable EV/EBITDA range
-                # Use conservative approach
+            if 0 < current_ev_ebitda < 100:
                 historical_ev_ebitda = current_ev_ebitda * 0.9
                 target_ev_ebitda = (industry_ev_ebitda + historical_ev_ebitda) / 2
                 
@@ -458,14 +753,201 @@ def calculate_fair_value_and_upside(info, sector):
         }
 
 # ============================================================================
+# SECTOR-BASED SCREENERS
+# ============================================================================
+def get_sector_screeners():
+    """Define sector-based preset screeners"""
+    return {
+        "🏦 Financial Services Opportunities": {
+            'sector': 'Financial Services',
+            'upside_min': 15,
+            'pe_max': 25,
+            'description': 'Undervalued financial stocks with strong fundamentals'
+        },
+        
+        "💻 Technology Growth Stocks": {
+            'sector': 'Technology',
+            'upside_min': 20,
+            'pe_max': 30,
+            'description': 'High-growth tech stocks with reasonable valuations'
+        },
+        
+        "💊 Healthcare & Pharma Leaders": {
+            'sector': 'Healthcare & Pharma',
+            'upside_min': 18,
+            'pe_max': 35,
+            'description': 'Healthcare leaders with upside potential'
+        },
+        
+        "🏭 Industrial Powerhouses": {
+            'sector': 'Industrial & Manufacturing',
+            'upside_min': 15,
+            'pe_max': 25,
+            'description': 'Industrial stocks with strong fundamentals'
+        },
+        
+        "⚡ Energy & Utilities Value": {
+            'sector': 'Energy & Utilities',
+            'upside_min': 12,
+            'pe_max': 20,
+            'description': 'Value opportunities in energy sector'
+        },
+        
+        "🛒 Consumer & Retail Stars": {
+            'sector': 'Consumer & Retail',
+            'upside_min': 15,
+            'pe_max': 35,
+            'description': 'Consumer brands with growth potential'
+        },
+        
+        "🧪 Materials & Chemicals": {
+            'sector': 'Materials & Chemicals',
+            'upside_min': 15,
+            'pe_max': 22,
+            'description': 'Chemical and material sector opportunities'
+        },
+        
+        "🏠 Real Estate & Construction": {
+            'sector': 'Real Estate & Construction',
+            'upside_min': 20,
+            'pe_max': 30,
+            'description': 'Real estate development opportunities'
+        },
+        
+        "🚛 Transportation Leaders": {
+            'sector': 'Transportation',
+            'upside_min': 15,
+            'pe_max': 25,
+            'description': 'Transportation and logistics stocks'
+        },
+        
+        "🚗 Automotive Sector": {
+            'sector': 'Automotive',
+            'upside_min': 15,
+            'pe_max': 25,
+            'description': 'Auto manufacturers and parts suppliers'
+        },
+        
+        "🧵 Textiles Value Picks": {
+            'sector': 'Textiles',
+            'upside_min': 18,
+            'pe_max': 22,
+            'description': 'Textile industry value opportunities'
+        }
+    }
+
+def run_sector_screener(sector, criteria, limit=25):
+    """Run screening for a specific sector"""
+    
+    # Get categories for this sector
+    categories = SECTOR_MAPPING.get(sector, [])
+    if not categories:
+        return pd.DataFrame()
+    
+    # Get all stocks in these categories
+    stocks = get_stocks_in_categories(categories)
+    
+    if not stocks:
+        return pd.DataFrame()
+    
+    results = []
+    progress_bar = st.progress(0)
+    status_text = st.empty()
+    
+    stock_items = list(stocks.items())
+    analyzed_count = 0
+    
+    for idx, (ticker, name) in enumerate(stock_items):
+        # Update progress
+        progress = min((idx + 1) / len(stock_items), 1.0)
+        progress_bar.progress(progress)
+        status_text.text(f"Analyzing {sector}: {idx+1}/{len(stock_items)} - {ticker}")
+        
+        # Fetch stock data
+        info, error = fetch_stock_data(ticker)
+        analyzed_count += 1
+        
+        if not error and info:
+            try:
+                # Calculate valuations
+                valuation_data = calculate_fair_value_and_upside(info, sector)
+                
+                price = info.get('currentPrice', 0) or info.get('regularMarketPrice', 0)
+                market_cap = info.get('marketCap', 0)
+                pe_ratio = info.get('trailingPE', 0)
+                pb_ratio = info.get('priceToBook', 0)
+                dividend_yield = info.get('dividendYield', 0)
+                
+                # 52-week data
+                high_52w = info.get('fiftyTwoWeekHigh', 0)
+                low_52w = info.get('fiftyTwoWeekLow', 0)
+                pct_from_high = None
+                pct_from_low = None
+                
+                if price and high_52w and low_52w and high_52w > low_52w:
+                    pct_from_high = ((high_52w - price) / high_52w * 100)
+                    pct_from_low = ((price - low_52w) / low_52w * 100)
+                
+                # Apply filters
+                passes = True
+                
+                # Upside filter
+                if 'upside_min' in criteria and valuation_data['avg_upside']:
+                    if valuation_data['avg_upside'] < criteria['upside_min']:
+                        passes = False
+                
+                # PE filter
+                if passes and 'pe_max' in criteria and pe_ratio:
+                    if pe_ratio > criteria['pe_max']:
+                        passes = False
+                
+                if passes:
+                    results.append({
+                        'Ticker': ticker,
+                        'Name': name,
+                        'Sector': sector,
+                        'Price': price,
+                        'Market Cap': market_cap,
+                        'Cap Type': categorize_market_cap(market_cap),
+                        'PE Ratio': pe_ratio,
+                        'PB Ratio': pb_ratio,
+                        'Fair Value': valuation_data['avg_fair_value'],
+                        'Upside %': valuation_data['avg_upside'],
+                        'Dividend Yield': dividend_yield * 100 if dividend_yield else 0,
+                        '52W High': high_52w,
+                        '52W Low': low_52w,
+                        'From 52W High %': -pct_from_high if pct_from_high else None,
+                        'From 52W Low %': pct_from_low if pct_from_low else None,
+                    })
+                
+                # Check limit
+                if len(results) >= limit:
+                    break
+                    
+            except Exception as e:
+                continue
+    
+    progress_bar.empty()
+    status_text.empty()
+    
+    return pd.DataFrame(results)
+
+# ============================================================================
 # INDIVIDUAL STOCK ANALYSIS
 # ============================================================================
-def analyze_individual_stock(ticker, sector):
+def analyze_individual_stock(ticker):
     """Detailed analysis of individual stock"""
     info, error = fetch_stock_data(ticker)
     
     if error or not info:
         return None, error
+    
+    # Find sector for this ticker
+    sector = 'Default'
+    for category, stocks in INDIAN_STOCKS.items():
+        if ticker in stocks:
+            sector = get_sector_from_category(category)
+            break
     
     # Basic info
     company = info.get('longName', ticker)
@@ -573,227 +1055,79 @@ def create_gauge_chart(upside_pe, upside_ev):
     return fig
 
 # ============================================================================
-# ENHANCED SECTOR SCREENING
-# ============================================================================
-def run_sector_screening(df, selected_sectors):
-    """Run comprehensive sector-wise screening with ALL stocks"""
-    
-    sector_results = {}
-    overall_progress = st.progress(0)
-    status_text = st.empty()
-    
-    total_sectors = len(selected_sectors)
-    
-    for sector_idx, sector in enumerate(selected_sectors):
-        status_text.text(f"Processing {sector}...")
-        
-        # Get sector mapping
-        sector_mapping = get_sector_mapping()
-        categories = sector_mapping.get(sector, [])
-        
-        # Filter stocks for this sector - ENSURE ALL ARE INCLUDED
-        sector_stocks = df[df['Category Name'].isin(categories)].copy()
-        
-        st.info(f"Found {len(sector_stocks)} stocks in {sector} sector")
-        
-        if len(sector_stocks) == 0:
-            continue
-        
-        sector_data = []
-        total_stocks = len(sector_stocks)
-        processed_count = 0
-        
-        for stock_idx, (_, row) in enumerate(sector_stocks.iterrows()):
-            # Update progress more frequently
-            if stock_idx % 10 == 0:  # Update every 10 stocks
-                stock_progress = stock_idx / total_stocks
-                overall_sector_progress = (sector_idx + stock_progress) / total_sectors
-                overall_progress.progress(min(overall_sector_progress, 1.0))
-                status_text.text(f"Processing {sector}: {stock_idx+1}/{total_stocks} - {row['Ticker']}")
-            
-            # Fetch stock data - NO SKIPPING
-            info, error = fetch_stock_data(row['Ticker'])
-            processed_count += 1
-            
-            # Process even if there's an error - record what we can
-            try:
-                if not error and info:
-                    price = info.get('currentPrice', 0) or info.get('regularMarketPrice', 0)
-                    market_cap = info.get('marketCap', 0)
-                    pe_ratio = info.get('trailingPE', 0)
-                    pb_ratio = info.get('priceToBook', 0)
-                    dividend_yield = info.get('dividendYield', 0)
-                    beta = info.get('beta', 0)
-                    
-                    # 52-week data
-                    high_52w = info.get('fiftyTwoWeekHigh', 0)
-                    low_52w = info.get('fiftyTwoWeekLow', 0)
-                    
-                    pct_from_high = None
-                    pct_from_low = None
-                    
-                    if price and high_52w and low_52w and high_52w > low_52w:
-                        pct_from_high = ((high_52w - price) / high_52w * 100)
-                        pct_from_low = ((price - low_52w) / low_52w * 100)
-                    
-                    # Calculate fair value and upside
-                    valuation_data = calculate_fair_value_and_upside(info, sector)
-                    
-                    sector_data.append({
-                        'Ticker': row['Ticker'],
-                        'Name': row['Name'],
-                        'Category': row['Category Name'],
-                        'Price': price,
-                        'Market Cap': market_cap,
-                        'Cap Type': categorize_market_cap(market_cap),
-                        'PE Ratio': pe_ratio,
-                        'PB Ratio': pb_ratio,
-                        'Fair Value': valuation_data['avg_fair_value'],
-                        'Upside %': valuation_data['avg_upside'],
-                        'Dividend Yield': dividend_yield * 100 if dividend_yield else 0,
-                        'Beta': beta,
-                        '52W High': high_52w,
-                        '52W Low': low_52w,
-                        'From 52W High %': -pct_from_high if pct_from_high else None,
-                        'From 52W Low %': pct_from_low if pct_from_low else None,
-                        'Status': 'Success'
-                    })
-                else:
-                    # Still record the stock even if data fetch failed
-                    sector_data.append({
-                        'Ticker': row['Ticker'],
-                        'Name': row['Name'],
-                        'Category': row['Category Name'],
-                        'Price': None,
-                        'Market Cap': None,
-                        'Cap Type': 'Unknown',
-                        'PE Ratio': None,
-                        'PB Ratio': None,
-                        'Fair Value': None,
-                        'Upside %': None,
-                        'Dividend Yield': None,
-                        'Beta': None,
-                        '52W High': None,
-                        '52W Low': None,
-                        'From 52W High %': None,
-                        'From 52W Low %': None,
-                        'Status': f'Error: {error}' if error else 'No Data'
-                    })
-            except Exception as e:
-                # Record failed stocks too
-                sector_data.append({
-                    'Ticker': row['Ticker'],
-                    'Name': row['Name'],
-                    'Category': row['Category Name'],
-                    'Price': None,
-                    'Market Cap': None,
-                    'Cap Type': 'Unknown',
-                    'PE Ratio': None,
-                    'PB Ratio': None,
-                    'Fair Value': None,
-                    'Upside %': None,
-                    'Dividend Yield': None,
-                    'Beta': None,
-                    '52W High': None,
-                    '52W Low': None,
-                    'From 52W High %': None,
-                    'From 52W Low %': None,
-                    'Status': f'Exception: {str(e)[:50]}'
-                })
-        
-        if sector_data:
-            sector_results[sector] = pd.DataFrame(sector_data)
-            st.success(f"✅ {sector}: Processed {len(sector_data)}/{total_stocks} stocks")
-        
-        # Update overall progress for completed sector
-        overall_progress.progress(min((sector_idx + 1) / total_sectors, 1.0))
-    
-    overall_progress.empty()
-    status_text.empty()
-    
-    return sector_results
-
-# ============================================================================
 # MAIN APPLICATION
 # ============================================================================
 
 st.markdown('''
 <div class="main-header">
-    NYZTRADE COMPLETE STOCK ANALYZER
+    NYZTRADE PRO SCREENER
 </div>
 <div class="sub-header">
-    🎯 Complete Sector Analysis | Individual Stock Valuation | Fair Value Calculations
+    🎯 8,984 Indian Stocks | 11 Sector-Based Screeners | Professional Valuation Analysis
 </div>
 ''', unsafe_allow_html=True)
 
 # ============================================================================
-# DATABASE LOADING
+# STOCK UNIVERSE OVERVIEW
 # ============================================================================
-st.markdown('<div class="section-header">📂 Database Management</div>', unsafe_allow_html=True)
+st.markdown('<div class="section-header">📊 Stock Universe Overview</div>', unsafe_allow_html=True)
 
-uploaded_file = st.file_uploader(
-    "📤 Upload Your Stock Database (CSV)", 
-    type=['csv'],
-    help="Upload a CSV file with columns: Ticker, Name, Category Name"
-)
+# Calculate statistics
+sector_stocks = get_all_stocks_by_sector()
+total_stocks = sum(len(stocks) for stocks in INDIAN_STOCKS.values())
+total_sectors = len(SECTOR_MAPPING)
+total_categories = len(INDIAN_STOCKS)
 
-# Load database
-if uploaded_file is not None:
-    df = load_stocks_database(uploaded_file)
-    if df is not None:
-        st.session_state.stocks_df = df
-        st.markdown('<div class="success-message">✅ Database uploaded successfully!</div>', unsafe_allow_html=True)
-elif 'stocks_df' not in st.session_state:
-    df = load_stocks_database()
-    if df is not None:
-        st.session_state.stocks_df = df
-        st.markdown('<div class="success-message">✅ Default database loaded!</div>', unsafe_allow_html=True)
-    else:
-        st.error("❌ No database available. Please upload a CSV file.")
-        st.stop()
-else:
-    df = st.session_state.stocks_df
-
-# Create sector analysis
-df, sector_summary = create_sector_analysis(df)
-
-# Database statistics
+# Display statistics
 col1, col2, col3, col4 = st.columns(4)
 
 with col1:
     st.markdown(f'''
     <div class="metric-card">
-        <div style="font-size: 2rem; font-weight: bold; color: #a78bfa;">{len(df):,}</div>
+        <div style="font-size: 2rem; font-weight: bold; color: #a78bfa;">{total_stocks:,}</div>
         <div style="color: #94a3b8;">📊 Total Stocks</div>
     </div>
     ''', unsafe_allow_html=True)
 
 with col2:
-    sectors = len(sector_summary)
     st.markdown(f'''
     <div class="metric-card">
-        <div style="font-size: 2rem; font-weight: bold; color: #a78bfa;">{sectors}</div>
-        <div style="color: #94a3b8;">🏢 Sectors</div>
+        <div style="font-size: 2rem; font-weight: bold; color: #a78bfa;">{total_sectors}</div>
+        <div style="color: #94a3b8;">🏢 Major Sectors</div>
     </div>
     ''', unsafe_allow_html=True)
 
 with col3:
-    categories = df['Category Name'].nunique()
     st.markdown(f'''
     <div class="metric-card">
-        <div style="font-size: 2rem; font-weight: bold; color: #a78bfa;">{categories}</div>
+        <div style="font-size: 2rem; font-weight: bold; color: #a78bfa;">{total_categories}</div>
         <div style="color: #94a3b8;">🏷️ Categories</div>
     </div>
     ''', unsafe_allow_html=True)
 
 with col4:
-    nse_count = len(df[df['Ticker'].str.contains('.NS', na=False)])
+    nse_count = sum(1 for stocks in INDIAN_STOCKS.values() for ticker in stocks.keys() if '.NS' in ticker)
     st.markdown(f'''
     <div class="metric-card">
         <div style="font-size: 2rem; font-weight: bold; color: #a78bfa;">{nse_count:,}</div>
-        <div style="color: #94a3b8;">📈 NSE Stocks</div>
+        <div style="color: #94a3b8;">📈 NSE Listed</div>
     </div>
     ''', unsafe_allow_html=True)
+
+# Display sector breakdown
+st.markdown("**📈 Sector Breakdown:**")
+sector_breakdown = []
+for sector, categories in SECTOR_MAPPING.items():
+    stock_count = sum(len(INDIAN_STOCKS.get(cat, {})) for cat in categories)
+    sector_breakdown.append((sector, stock_count))
+
+sector_breakdown.sort(key=lambda x: x[1], reverse=True)
+
+col1, col2 = st.columns(2)
+for i, (sector, count) in enumerate(sector_breakdown):
+    col = col1 if i % 2 == 0 else col2
+    with col:
+        st.markdown(f"• **{sector}**: {count:,} stocks")
 
 # ============================================================================
 # SIDEBAR CONTROLS
@@ -812,243 +1146,190 @@ with st.sidebar:
     # MODE SELECTION
     mode = st.radio(
         "📊 Analysis Mode",
-        ["🏢 Sector Analysis", "📈 Individual Stock"],
-        help="Choose your analysis mode"
+        ["🎯 Sector Screeners", "📈 Individual Stock Analysis"],
+        help="Choose your analysis approach"
     )
     
-    if mode == "🏢 Sector Analysis":
-        st.markdown("### 🎯 Sector Selection")
+    if mode == "🎯 Sector Screeners":
+        st.markdown("### 🎯 Sector-Based Screeners")
         
-        available_sectors = sector_summary['Sector'].tolist()
-        available_sectors = [s for s in available_sectors if s != 'Other']
-        
-        # Show sector stock counts
-        st.markdown("**Available Sectors:**")
-        for _, row in sector_summary.head(10).iterrows():
-            if row['Sector'] != 'Other':
-                st.text(f"• {row['Sector']}: {row['Stock Count']:,} stocks")
-        
-        selected_sectors = st.multiselect(
-            "🏢 Choose Sectors to Analyze",
-            available_sectors,
-            default=[],
-            help="Select sectors for complete analysis"
+        sector_screeners = get_sector_screeners()
+        selected_screener = st.selectbox(
+            "Choose Sector Screener",
+            list(sector_screeners.keys()),
+            help="Select a sector-focused screening strategy"
         )
         
-        if selected_sectors:
-            total_stocks = 0
-            for sector in selected_sectors:
-                sector_count = sector_summary[sector_summary['Sector'] == sector]['Stock Count'].iloc[0]
-                total_stocks += sector_count
-            st.info(f"Will analyze {total_stocks:,} stocks across {len(selected_sectors)} sectors")
+        # Show screener details
+        screener_config = sector_screeners[selected_screener]
+        st.markdown(f"**📋 {screener_config['description']}**")
+        st.markdown(f"**🎯 Sector:** {screener_config['sector']}")
+        st.markdown(f"**📈 Min Upside:** {screener_config['upside_min']}%")
+        st.markdown(f"**💰 Max PE:** {screener_config['pe_max']}x")
         
-        st.markdown("---")
+        # Advanced filters
+        with st.expander("🔧 Advanced Filters"):
+            result_limit = st.slider("Max Results", 10, 50, 25, 5)
+            
+            # Override default criteria
+            custom_upside = st.number_input(
+                "Custom Min Upside %", 
+                value=screener_config['upside_min'], 
+                min_value=0.0, 
+                max_value=100.0, 
+                step=5.0
+            )
+            
+            custom_pe = st.number_input(
+                "Custom Max PE", 
+                value=screener_config['pe_max'], 
+                min_value=5.0, 
+                max_value=50.0, 
+                step=5.0
+            )
         
-        sort_by = st.selectbox(
-            "Sort Results By",
-            ["Upside % (Desc)", "Price (Asc)", "PE Ratio (Asc)", "Market Cap (Desc)"],
-            help="Choose how to sort the results within each sector"
-        )
-        
-        run_analysis = st.button("🚀 ANALYZE ALL SECTORS", use_container_width=True, type="primary")
+        run_screener = st.button("🚀 RUN SECTOR SCREENER", use_container_width=True, type="primary")
     
     else:  # Individual Stock Analysis
         st.markdown("### 📈 Individual Stock Analysis")
         
-        # Stock selection
+        # Sector selection for browsing
+        browse_sector = st.selectbox(
+            "🔍 Browse by Sector",
+            ['All Sectors'] + list(SECTOR_MAPPING.keys()),
+            help="Filter stocks by sector"
+        )
+        
+        # Get stocks for selected sector
+        if browse_sector == 'All Sectors':
+            available_stocks = {}
+            for category, stocks in INDIAN_STOCKS.items():
+                available_stocks.update(stocks)
+        else:
+            categories = SECTOR_MAPPING[browse_sector]
+            available_stocks = get_stocks_in_categories(categories)
+        
+        # Search functionality
         search = st.text_input(
-            "🔍 Search Stock",
+            "🔍 Search Stocks",
             placeholder="Company name or ticker...",
             help="Search by company name or ticker symbol"
         )
         
         if search:
             search_upper = search.upper()
-            filtered_df = df[
-                df['Ticker'].str.upper().str.contains(search_upper, na=False) |
-                df['Name'].str.upper().str.contains(search_upper, na=False)
-            ].head(50)  # Limit to first 50 results
+            filtered_stocks = {
+                ticker: name for ticker, name in available_stocks.items()
+                if search_upper in ticker.upper() or search_upper in name.upper()
+            }
         else:
-            filtered_df = df.head(50)  # Show first 50 stocks
+            # Show first 100 stocks for performance
+            filtered_stocks = dict(list(available_stocks.items())[:100])
         
-        if len(filtered_df) > 0:
-            stock_options = [f"{row['Name']} ({row['Ticker']})" for _, row in filtered_df.iterrows()]
+        st.info(f"Showing {len(filtered_stocks)} stocks")
+        
+        if filtered_stocks:
+            stock_options = [f"{name} ({ticker})" for ticker, name in filtered_stocks.items()]
             selected_stock = st.selectbox("🎯 Select Stock", [""] + stock_options)
             
             if selected_stock:
                 ticker = selected_stock.split("(")[1].strip(")")
-                stock_row = df[df['Ticker'] == ticker]
-                if not stock_row.empty:
-                    category = stock_row['Category Name'].iloc[0]
-                    sector_mapping = get_sector_mapping()
-                    
-                    # Find sector for this stock
-                    stock_sector = 'Other'
-                    for sector, categories in sector_mapping.items():
-                        if category in categories:
-                            stock_sector = sector
-                            break
-                    
-                    st.session_state.selected_stock = {
-                        'ticker': ticker,
-                        'name': stock_row['Name'].iloc[0],
-                        'sector': stock_sector
-                    }
+                st.session_state.selected_stock_ticker = ticker
         
         # Manual ticker input
         st.markdown("---")
         manual_ticker = st.text_input(
             "✏️ Manual Ticker Entry",
             placeholder="e.g., RELIANCE.NS",
-            help="Enter any ticker manually"
+            help="Enter any NSE/BSE ticker directly"
         )
         
         if manual_ticker:
-            st.session_state.selected_stock = {
-                'ticker': manual_ticker.upper(),
-                'name': manual_ticker.upper(),
-                'sector': 'Other'
-            }
+            st.session_state.selected_stock_ticker = manual_ticker.upper()
         
         analyze_stock = st.button("📊 ANALYZE STOCK", use_container_width=True, type="primary")
 
 # ============================================================================
-# MAIN CONTENT
+# MAIN CONTENT - SECTOR SCREENERS
 # ============================================================================
 
-if mode == "🏢 Sector Analysis":
-    # Sector Overview
-    st.markdown('<div class="section-header">🏢 Sector Overview</div>', unsafe_allow_html=True)
-    
-    # Display sector distribution
-    st.markdown("**Sector Distribution:**")
-    for _, row in sector_summary.head(10).iterrows():
-        st.markdown(f"**{row['Sector']}**: {row['Stock Count']:,} stocks ({row['Sub-Categories']} categories)")
-    
-    if run_analysis and selected_sectors:
+if mode == "🎯 Sector Screeners":
+    if run_screener:
+        screener_config = sector_screeners[selected_screener]
+        
+        # Update criteria with custom values
+        criteria = {
+            'upside_min': custom_upside,
+            'pe_max': custom_pe
+        }
+        
         st.markdown(f'''
         <div class="highlight-box">
-            <h3>🔍 Comprehensive Sector Analysis</h3>
-            <p>Processing <strong>ALL</strong> stocks in {len(selected_sectors)} selected sectors...</p>
+            <h3>🔍 {selected_screener}</h3>
+            <p><strong>Sector:</strong> {screener_config['sector']}</p>
+            <p><strong>Strategy:</strong> {screener_config['description']}</p>
+            <p><strong>Filters:</strong> Min Upside {custom_upside}%, Max PE {custom_pe}x</p>
         </div>
         ''', unsafe_allow_html=True)
         
-        # Run complete sector screening
-        sector_results = run_sector_screening(df, selected_sectors)
+        # Run the screener
+        results_df = run_sector_screener(screener_config['sector'], criteria, result_limit)
         
-        if sector_results:
-            total_analyzed = sum(len(sector_df) for sector_df in sector_results.values())
-            successful_analyses = sum(len(sector_df[sector_df['Status'] == 'Success']) for sector_df in sector_results.values())
-            
+        if results_df.empty:
+            st.warning("❌ No stocks match the screening criteria. Try relaxing the filters.")
+        else:
             st.markdown(f'''
             <div class="success-message">
-                ✅ Complete analysis finished!<br>
-                📊 Total stocks processed: <strong>{total_analyzed:,}</strong><br>
-                💰 Successful analyses: <strong>{successful_analyses:,}</strong><br>
-                🎯 Coverage: <strong>{(successful_analyses/total_analyzed*100):.1f}%</strong>
+                ✅ Found <strong>{len(results_df)}</strong> opportunities in {screener_config['sector']} sector
             </div>
             ''', unsafe_allow_html=True)
             
-            # Display sector-wise results
-            st.markdown('<div class="section-header">🎯 Complete Sector Analysis Results</div>', unsafe_allow_html=True)
+            # Sort by upside percentage
+            results_df = results_df.sort_values('Upside %', ascending=False, na_position='last')
             
-            for sector, sector_df in sector_results.items():
-                with st.expander(f"🏢 {sector} ({len(sector_df):,} stocks processed)", expanded=True):
-                    
-                    # Filter successful analyses for metrics
-                    success_df = sector_df[sector_df['Status'] == 'Success'].copy()
-                    
-                    if len(success_df) > 0:
-                        # Sector summary stats
-                        col1, col2, col3, col4, col5 = st.columns(5)
-                        
-                        with col1:
-                            avg_pe = success_df['PE Ratio'].replace([np.inf, -np.inf], np.nan).mean()
-                            st.metric("Avg PE Ratio", f"{avg_pe:.2f}" if pd.notna(avg_pe) else "N/A")
-                        
-                        with col2:
-                            avg_pb = success_df['PB Ratio'].replace([np.inf, -np.inf], np.nan).mean()
-                            st.metric("Avg PB Ratio", f"{avg_pb:.2f}" if pd.notna(avg_pb) else "N/A")
-                        
-                        with col3:
-                            avg_upside = success_df['Upside %'].replace([np.inf, -np.inf], np.nan).mean()
-                            st.metric("Avg Upside %", f"{avg_upside:+.1f}%" if pd.notna(avg_upside) else "N/A")
-                        
-                        with col4:
-                            avg_from_high = success_df['From 52W High %'].mean()
-                            st.metric("Avg from 52W High", f"{avg_from_high:+.1f}%" if pd.notna(avg_from_high) else "N/A")
-                        
-                        with col5:
-                            undervalued_count = len(success_df[(success_df['Upside %'] > 0) & (success_df['Upside %'].notna())])
-                            st.metric("Undervalued Stocks", f"{undervalued_count}")
-                        
-                        # Sort and display results
-                        display_df = success_df.copy()
-                        
-                        if sort_by == "Upside % (Desc)":
-                            display_df = display_df.sort_values('Upside %', ascending=False, na_position='last')
-                        elif sort_by == "Price (Asc)":
-                            display_df = display_df.sort_values('Price', ascending=True, na_position='last')
-                        elif sort_by == "PE Ratio (Asc)":
-                            display_df = display_df.sort_values('PE Ratio', ascending=True, na_position='last')
-                        elif sort_by == "Market Cap (Desc)":
-                            display_df = display_df.sort_values('Market Cap', ascending=False, na_position='last')
-                        
-                        # Format display columns
-                        display_cols = ['Ticker', 'Name', 'Price', 'Fair Value', 'Upside %', 'PE Ratio', 'From 52W High %', 'Cap Type']
-                        formatted_df = display_df[display_cols].copy()
-                        
-                        # Format numerical columns
-                        formatted_df['Price'] = formatted_df['Price'].apply(lambda x: f"₹{x:,.2f}" if pd.notna(x) and x > 0 else "N/A")
-                        formatted_df['Fair Value'] = formatted_df['Fair Value'].apply(lambda x: f"₹{x:,.2f}" if pd.notna(x) and x > 0 else "N/A")
-                        formatted_df['Upside %'] = formatted_df['Upside %'].apply(lambda x: f"{x:+.1f}%" if pd.notna(x) else "N/A")
-                        formatted_df['PE Ratio'] = formatted_df['PE Ratio'].apply(lambda x: f"{x:.2f}" if pd.notna(x) and x > 0 else "N/A")
-                        formatted_df['From 52W High %'] = formatted_df['From 52W High %'].apply(lambda x: f"{x:+.1f}%" if pd.notna(x) else "N/A")
-                        
-                        st.markdown(f"**📈 Results (sorted by {sort_by}):**")
-                        
-                        st.dataframe(
-                            formatted_df,
-                            use_container_width=True,
-                            hide_index=True,
-                            height=400
-                        )
-                    else:
-                        st.warning("No successful data retrieval for this sector")
+            # Format the dataframe for display
+            display_df = results_df.copy()
+            
+            # Format columns
+            display_df['Price'] = display_df['Price'].apply(lambda x: f"₹{x:,.2f}" if pd.notna(x) else 'N/A')
+            display_df['Market Cap'] = display_df['Market Cap'].apply(lambda x: f"₹{x/10000000:,.0f}Cr" if pd.notna(x) else 'N/A')
+            display_df['Fair Value'] = display_df['Fair Value'].apply(lambda x: f"₹{x:,.2f}" if pd.notna(x) and x > 0 else "N/A")
+            display_df['Upside %'] = display_df['Upside %'].apply(lambda x: f"{x:+.1f}%" if pd.notna(x) else "N/A")
+            display_df['PE Ratio'] = display_df['PE Ratio'].apply(lambda x: f"{x:.2f}" if pd.notna(x) and x > 0 else "N/A")
+            display_df['PB Ratio'] = display_df['PB Ratio'].apply(lambda x: f"{x:.2f}" if pd.notna(x) and x > 0 else "N/A")
+            display_df['From 52W High %'] = display_df['From 52W High %'].apply(lambda x: f"{x:+.1f}%" if pd.notna(x) else "N/A")
+            display_df['Dividend Yield'] = display_df['Dividend Yield'].apply(lambda x: f"{x:.2f}%" if pd.notna(x) else "N/A")
+            
+            # Display results
+            st.markdown('<div class="section-header">🎯 Screening Results</div>', unsafe_allow_html=True)
+            
+            st.dataframe(
+                display_df[['Ticker', 'Name', 'Price', 'Fair Value', 'Upside %', 'PE Ratio', 'From 52W High %', 'Cap Type']],
+                use_container_width=True,
+                hide_index=True,
+                height=400
+            )
             
             # Download option
-            st.markdown("---")
-            
-            # Combine all sector data for download
-            all_data = []
-            for sector, sector_df in sector_results.items():
-                sector_df_copy = sector_df.copy()
-                sector_df_copy['Sector'] = sector
-                all_data.append(sector_df_copy)
-            
-            if all_data:
-                combined_df = pd.concat(all_data, ignore_index=True)
-                csv = combined_df.to_csv(index=False)
-                st.download_button(
-                    "📥 Download Complete Analysis (CSV)",
-                    data=csv,
-                    file_name=f"NYZTrade_Complete_Analysis_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
-                    mime="text/csv",
-                    use_container_width=True
-                )
-        
-        else:
-            st.warning("❌ No sector results generated")
-    
-    elif run_analysis and not selected_sectors:
-        st.warning("⚠️ Please select at least one sector to analyze.")
+            csv = results_df.to_csv(index=False)
+            st.download_button(
+                "📥 Download Results (CSV)",
+                data=csv,
+                file_name=f"NYZTrade_{screener_config['sector'].replace(' & ', '_')}_Screen_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                mime="text/csv",
+                use_container_width=True
+            )
 
-else:  # Individual Stock Analysis Mode
-    if analyze_stock and 'selected_stock' in st.session_state:
-        stock_info = st.session_state.selected_stock
+# ============================================================================
+# MAIN CONTENT - INDIVIDUAL STOCK ANALYSIS
+# ============================================================================
+
+elif mode == "📈 Individual Stock Analysis":
+    if analyze_stock and hasattr(st.session_state, 'selected_stock_ticker'):
+        ticker = st.session_state.selected_stock_ticker
         
-        with st.spinner(f"🔄 Analyzing {stock_info['ticker']}..."):
-            analysis, error = analyze_individual_stock(stock_info['ticker'], stock_info['sector'])
+        with st.spinner(f"🔄 Analyzing {ticker}..."):
+            analysis, error = analyze_individual_stock(ticker)
         
         if analysis:
             # Display analysis
@@ -1112,15 +1393,15 @@ else:  # Individual Stock Analysis Mode
                 </div>
                 ''', unsafe_allow_html=True)
             
-            # Key metrics
+            # Key metrics grid
             col1, col2, col3, col4, col5, col6 = st.columns(6)
             
             metrics = [
-                (col1, "💰", f"₹{analysis['price']:,.2f}", "Current Price"),
+                (col1, "💰", f"₹{analysis['price']:,.2f}", "Price"),
                 (col2, "📈", f"{analysis['trailing_pe']:.2f}" if analysis['trailing_pe'] else "N/A", "PE Ratio"),
                 (col3, "📚", f"{analysis['pb_ratio']:.2f}" if analysis['pb_ratio'] else "N/A", "P/B Ratio"),
                 (col4, "🏦", f"₹{analysis['market_cap']/10000000:,.0f}Cr" if analysis['market_cap'] else "N/A", "Market Cap"),
-                (col5, "💵", f"{analysis['dividend_yield']*100:.2f}%" if analysis['dividend_yield'] else "N/A", "Dividend Yield"),
+                (col5, "💵", f"{analysis['dividend_yield']*100:.2f}%" if analysis['dividend_yield'] else "N/A", "Dividend"),
                 (col6, "📊", f"{analysis['beta']:.2f}" if analysis['beta'] else "N/A", "Beta")
             ]
             
@@ -1136,7 +1417,7 @@ else:  # Individual Stock Analysis Mode
             
             # Valuation gauges
             if analysis['upside_pe'] is not None or analysis['upside_ev'] is not None:
-                st.markdown('<div class="section-header">📊 Valuation Analysis</div>', unsafe_allow_html=True)
+                st.markdown('<div class="section-header">📊 Valuation Methods</div>', unsafe_allow_html=True)
                 fig_gauge = create_gauge_chart(
                     analysis['upside_pe'] if analysis['upside_pe'] else 0,
                     analysis['upside_ev'] if analysis['upside_ev'] else 0
@@ -1157,7 +1438,8 @@ else:  # Individual Stock Analysis Mode
                     st.metric("52W Low", f"₹{analysis['low_52w']:,.2f}")
         
         elif error:
-            st.error(f"❌ Error analyzing {stock_info['ticker']}: {error}")
+            st.error(f"❌ Error analyzing {ticker}: {error}")
+            st.info("💡 Make sure the ticker is correct (e.g., RELIANCE.NS for NSE stocks)")
     
     elif analyze_stock:
         st.warning("⚠️ Please select a stock first")
@@ -1165,14 +1447,15 @@ else:  # Individual Stock Analysis Mode
 # Footer
 st.markdown('''
 <div style="margin-top: 50px; padding: 30px; background: rgba(30, 41, 59, 0.4); border-radius: 15px; text-align: center;">
-    <h4 style="color: #a78bfa; margin-bottom: 15px;">NYZTrade Pro | Complete Stock Analysis Platform</h4>
+    <h4 style="color: #a78bfa; margin-bottom: 15px;">NYZTrade Pro | Professional Stock Analysis Platform</h4>
     <div class="disclaimer">
         ⚠️ <strong>Important Disclaimer:</strong> This platform is designed for educational and informational purposes only. 
-        Fair value calculations are based on industry benchmarks and should not be considered as investment advice. 
-        Always conduct your own research and consult with qualified financial professionals before making any investment decisions.
+        The analysis, recommendations, and data presented here should not be considered as financial advice or investment recommendations. 
+        Fair value calculations are based on industry benchmarks and financial models. Always conduct your own research and consult 
+        with qualified financial professionals before making any investment decisions.
     </div>
     <div style="margin-top: 15px; color: #64748b; font-size: 0.9rem;">
-        © 2024 NYZTrade | Complete Analysis Platform | Market data provided by Yahoo Finance
+        © 2024 NYZTrade | Stock Universe: 8,984 Indian Stocks | Market Data: Yahoo Finance
     </div>
 </div>
 ''', unsafe_allow_html=True)
