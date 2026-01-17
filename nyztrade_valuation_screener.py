@@ -425,18 +425,18 @@ SECTOR_MAPPING = {
 
 # Default/Fallback benchmarks (used if dynamic calculation fails)
 DEFAULT_BENCHMARKS = {
-    'Financial Services': {'pe': 18, 'ev_ebitda': 12, 'pb': 1.5, 'roe': 15},
-    'Technology': {'pe': 25, 'ev_ebitda': 15, 'pb': 3.5, 'roe': 20},
-    'Healthcare & Pharma': {'pe': 28, 'ev_ebitda': 14, 'pb': 3.0, 'roe': 18},
-    'Industrial & Manufacturing': {'pe': 22, 'ev_ebitda': 12, 'pb': 2.0, 'roe': 14},
-    'Energy & Utilities': {'pe': 15, 'ev_ebitda': 8, 'pb': 1.2, 'roe': 12},
-    'Consumer & Retail': {'pe': 30, 'ev_ebitda': 14, 'pb': 2.5, 'roe': 16},
-    'Materials & Chemicals': {'pe': 18, 'ev_ebitda': 10, 'pb': 1.8, 'roe': 13},
-    'Real Estate & Construction': {'pe': 25, 'ev_ebitda': 18, 'pb': 1.5, 'roe': 12},
-    'Transportation': {'pe': 20, 'ev_ebitda': 12, 'pb': 1.8, 'roe': 14},
-    'Automotive': {'pe': 20, 'ev_ebitda': 12, 'pb': 1.5, 'roe': 15},
-    'Textiles': {'pe': 20, 'ev_ebitda': 12, 'pb': 1.5, 'roe': 15},
-    'Default': {'pe': 20, 'ev_ebitda': 12, 'pb': 2.0, 'roe': 15}
+    'Financial Services': {'pe': 18.0, 'ev_ebitda': 12.0, 'pb': 1.5, 'roe': 15.0},
+    'Technology': {'pe': 25.0, 'ev_ebitda': 15.0, 'pb': 3.5, 'roe': 20.0},
+    'Healthcare & Pharma': {'pe': 28.0, 'ev_ebitda': 14.0, 'pb': 3.0, 'roe': 18.0},
+    'Industrial & Manufacturing': {'pe': 22.0, 'ev_ebitda': 12.0, 'pb': 2.0, 'roe': 14.0},
+    'Energy & Utilities': {'pe': 15.0, 'ev_ebitda': 8.0, 'pb': 1.2, 'roe': 12.0},
+    'Consumer & Retail': {'pe': 30.0, 'ev_ebitda': 14.0, 'pb': 2.5, 'roe': 16.0},
+    'Materials & Chemicals': {'pe': 18.0, 'ev_ebitda': 10.0, 'pb': 1.8, 'roe': 13.0},
+    'Real Estate & Construction': {'pe': 25.0, 'ev_ebitda': 18.0, 'pb': 1.5, 'roe': 12.0},
+    'Transportation': {'pe': 20.0, 'ev_ebitda': 12.0, 'pb': 1.8, 'roe': 14.0},
+    'Automotive': {'pe': 20.0, 'ev_ebitda': 12.0, 'pb': 1.5, 'roe': 15.0},
+    'Textiles': {'pe': 20.0, 'ev_ebitda': 12.0, 'pb': 1.5, 'roe': 15.0},
+    'Default': {'pe': 20.0, 'ev_ebitda': 12.0, 'pb': 2.0, 'roe': 15.0}
 }
 
 # ============================================================================
@@ -516,28 +516,28 @@ def calculate_dynamic_sector_benchmarks(sector, sample_size=30, progress_callbac
         # PE benchmark
         if len(pe_ratios) >= 5:
             pe_clean = remove_outliers(pe_ratios)
-            benchmarks['pe'] = np.mean(pe_clean) if pe_clean else DEFAULT_BENCHMARKS.get(sector, DEFAULT_BENCHMARKS['Default'])['pe']
+            benchmarks['pe'] = float(np.mean(pe_clean)) if pe_clean else DEFAULT_BENCHMARKS.get(sector, DEFAULT_BENCHMARKS['Default'])['pe']
         else:
             benchmarks['pe'] = DEFAULT_BENCHMARKS.get(sector, DEFAULT_BENCHMARKS['Default'])['pe']
         
         # PB benchmark
         if len(pb_ratios) >= 5:
             pb_clean = remove_outliers(pb_ratios)
-            benchmarks['pb'] = np.mean(pb_clean) if pb_clean else DEFAULT_BENCHMARKS.get(sector, DEFAULT_BENCHMARKS['Default'])['pb']
+            benchmarks['pb'] = float(np.mean(pb_clean)) if pb_clean else DEFAULT_BENCHMARKS.get(sector, DEFAULT_BENCHMARKS['Default'])['pb']
         else:
             benchmarks['pb'] = DEFAULT_BENCHMARKS.get(sector, DEFAULT_BENCHMARKS['Default'])['pb']
         
         # EV/EBITDA benchmark
         if len(ev_ebitda_ratios) >= 5:
             ev_ebitda_clean = remove_outliers(ev_ebitda_ratios)
-            benchmarks['ev_ebitda'] = np.mean(ev_ebitda_clean) if ev_ebitda_clean else DEFAULT_BENCHMARKS.get(sector, DEFAULT_BENCHMARKS['Default'])['ev_ebitda']
+            benchmarks['ev_ebitda'] = float(np.mean(ev_ebitda_clean)) if ev_ebitda_clean else DEFAULT_BENCHMARKS.get(sector, DEFAULT_BENCHMARKS['Default'])['ev_ebitda']
         else:
             benchmarks['ev_ebitda'] = DEFAULT_BENCHMARKS.get(sector, DEFAULT_BENCHMARKS['Default'])['ev_ebitda']
         
         # ROE benchmark
         if len(roe_values) >= 5:
             roe_clean = remove_outliers(roe_values)
-            benchmarks['roe'] = np.mean(roe_clean) if roe_clean else DEFAULT_BENCHMARKS.get(sector, DEFAULT_BENCHMARKS['Default'])['roe']
+            benchmarks['roe'] = float(np.mean(roe_clean)) if roe_clean else DEFAULT_BENCHMARKS.get(sector, DEFAULT_BENCHMARKS['Default'])['roe']
         else:
             benchmarks['roe'] = DEFAULT_BENCHMARKS.get(sector, DEFAULT_BENCHMARKS['Default'])['roe']
         
@@ -606,6 +606,15 @@ def get_sector_from_category(category):
         if category in categories:
             return sector
     return 'Other'
+
+def get_sector_stock_count(sector):
+    """Get total number of stocks in a sector"""
+    categories = SECTOR_MAPPING.get(sector, [])
+    total_stocks = 0
+    for category in categories:
+        if category in INDIAN_STOCKS:
+            total_stocks += len(INDIAN_STOCKS[category])
+    return total_stocks
 
 # ============================================================================
 # PROFESSIONAL CSS STYLING
@@ -920,77 +929,77 @@ def get_sector_screeners():
     return {
         "🏦 Financial Services Opportunities": {
             'sector': 'Financial Services',
-            'upside_min': 15,
+            'upside_min': 15.0,
             'pe_max_multiplier': 1.3,  # 30% above sector average
             'description': 'Undervalued financial stocks with PE below 1.3x sector average'
         },
         
         "💻 Technology Growth Stocks": {
             'sector': 'Technology',
-            'upside_min': 20,
+            'upside_min': 20.0,
             'pe_max_multiplier': 1.2,
             'description': 'High-growth tech stocks with PE below 1.2x sector average'
         },
         
         "💊 Healthcare & Pharma Leaders": {
             'sector': 'Healthcare & Pharma',
-            'upside_min': 18,
+            'upside_min': 18.0,
             'pe_max_multiplier': 1.25,
             'description': 'Healthcare leaders with PE below 1.25x sector average'
         },
         
         "🏭 Industrial Powerhouses": {
             'sector': 'Industrial & Manufacturing',
-            'upside_min': 15,
+            'upside_min': 15.0,
             'pe_max_multiplier': 1.2,
             'description': 'Industrial stocks with PE below 1.2x sector average'
         },
         
         "⚡ Energy & Utilities Value": {
             'sector': 'Energy & Utilities',
-            'upside_min': 12,
+            'upside_min': 12.0,
             'pe_max_multiplier': 1.4,
             'description': 'Value opportunities with PE below 1.4x sector average'
         },
         
         "🛒 Consumer & Retail Stars": {
             'sector': 'Consumer & Retail',
-            'upside_min': 15,
+            'upside_min': 15.0,
             'pe_max_multiplier': 1.1,
             'description': 'Consumer brands with PE below 1.1x sector average'
         },
         
         "🧪 Materials & Chemicals": {
             'sector': 'Materials & Chemicals',
-            'upside_min': 15,
+            'upside_min': 15.0,
             'pe_max_multiplier': 1.3,
             'description': 'Chemical sector with PE below 1.3x sector average'
         },
         
         "🏠 Real Estate & Construction": {
             'sector': 'Real Estate & Construction',
-            'upside_min': 20,
+            'upside_min': 20.0,
             'pe_max_multiplier': 1.2,
             'description': 'Real estate with PE below 1.2x sector average'
         },
         
         "🚛 Transportation Leaders": {
             'sector': 'Transportation',
-            'upside_min': 15,
+            'upside_min': 15.0,
             'pe_max_multiplier': 1.3,
             'description': 'Transportation with PE below 1.3x sector average'
         },
         
         "🚗 Automotive Sector": {
             'sector': 'Automotive',
-            'upside_min': 15,
+            'upside_min': 15.0,
             'pe_max_multiplier': 1.2,
             'description': 'Auto sector with PE below 1.2x sector average'
         },
         
         "🧵 Textiles Value Picks": {
             'sector': 'Textiles',
-            'upside_min': 18,
+            'upside_min': 18.0,
             'pe_max_multiplier': 1.1,
             'description': 'Textile sector with PE below 1.1x sector average'
         }
@@ -1121,8 +1130,8 @@ def run_dynamic_sector_screener(sector, criteria, limit=25, use_dynamic_benchmar
                         'From 52W Low %': pct_from_low if pct_from_low else None,
                     })
                 
-                # Check limit
-                if len(results) >= limit:
+                # Check limit - if limit is -1, process all stocks
+                if limit > 0 and len(results) >= limit:
                     break
                     
             except Exception as e:
@@ -1338,7 +1347,7 @@ st.markdown(f'''
 </div>
 ''', unsafe_allow_html=True)
 
-# Display sector breakdown
+# Display sector breakdown with stock counts
 st.markdown("**📈 Sector Coverage for Dynamic Analysis:**")
 sector_breakdown = []
 for sector, categories in SECTOR_MAPPING.items():
@@ -1386,8 +1395,11 @@ with st.sidebar:
         
         # Show screener details
         screener_config = sector_screeners[selected_screener]
+        sector_stock_count = get_sector_stock_count(screener_config['sector'])
+        
         st.markdown(f"**📋 {screener_config['description']}**")
         st.markdown(f"**🎯 Sector:** {screener_config['sector']}")
+        st.markdown(f"**📊 Available Stocks:** {sector_stock_count:,}")
         st.markdown(f"**📈 Min Upside:** {screener_config['upside_min']}%")
         st.markdown(f"**💰 PE Multiplier:** {screener_config['pe_max_multiplier']}x sector avg")
         
@@ -1397,12 +1409,20 @@ with st.sidebar:
         
         # Advanced filters
         with st.expander("🔧 Advanced Filters"):
-            result_limit = st.slider("Max Results", 10, 50, 25, 5)
+            # Set maximum results to sector stock count
+            result_limit = st.slider(
+                "Max Results (0 = All Stocks)", 
+                min_value=0, 
+                max_value=sector_stock_count, 
+                value=min(50, sector_stock_count), 
+                step=10,
+                help=f"0 means analyze ALL {sector_stock_count:,} stocks in this sector"
+            )
             
-            # Override default criteria
+            # Override default criteria with consistent float types
             custom_upside = st.number_input(
                 "Custom Min Upside %", 
-                value=screener_config['upside_min'], 
+                value=float(screener_config['upside_min']), 
                 min_value=0.0, 
                 max_value=100.0, 
                 step=5.0
@@ -1410,12 +1430,15 @@ with st.sidebar:
             
             custom_pe_multiplier = st.number_input(
                 "Custom PE Multiplier", 
-                value=screener_config['pe_max_multiplier'], 
+                value=float(screener_config['pe_max_multiplier']), 
                 min_value=0.5, 
                 max_value=3.0, 
                 step=0.1,
                 help="Multiplier of sector average PE"
             )
+            
+            if result_limit == 0:
+                st.info(f"🎯 Will analyze ALL {sector_stock_count:,} stocks in {screener_config['sector']} sector")
         
         run_screener = st.button("🚀 RUN DYNAMIC SCREENER", use_container_width=True, type="primary")
     
@@ -1492,10 +1515,15 @@ if mode == "🎯 Dynamic Sector Screeners":
             'pe_max_multiplier': custom_pe_multiplier
         }
         
+        # Set limit: 0 means all stocks, otherwise use the specified limit
+        screen_limit = -1 if result_limit == 0 else result_limit
+        
         st.markdown(f'''
         <div class="highlight-box">
             <h3>🧮 {selected_screener}</h3>
             <p><strong>Sector:</strong> {screener_config['sector']}</p>
+            <p><strong>Total Stocks:</strong> {get_sector_stock_count(screener_config['sector']):,}</p>
+            <p><strong>Analysis Scope:</strong> {"ALL stocks" if result_limit == 0 else f"Top {result_limit} results"}</p>
             <p><strong>Strategy:</strong> {screener_config['description']}</p>
             <p><strong>Dynamic Filters:</strong> Min Upside {custom_upside}%, PE ≤ {custom_pe_multiplier}x sector average</p>
             <p><strong>Method:</strong> {"🧮 Dynamic Benchmarks" if use_dynamic else "📊 Static Benchmarks"}</p>
@@ -1506,7 +1534,7 @@ if mode == "🎯 Dynamic Sector Screeners":
         results_df, calculated_benchmarks = run_dynamic_sector_screener(
             screener_config['sector'], 
             criteria, 
-            result_limit, 
+            limit=screen_limit, 
             use_dynamic_benchmarks=use_dynamic
         )
         
@@ -1516,7 +1544,8 @@ if mode == "🎯 Dynamic Sector Screeners":
             st.markdown(f'''
             <div class="success-message">
                 ✅ Found <strong>{len(results_df)}</strong> dynamic opportunities in {screener_config['sector']} sector<br>
-                🧮 Analysis Method: {"Dynamic sector benchmarks" if use_dynamic else "Static benchmarks"}
+                🧮 Analysis Method: {"Dynamic sector benchmarks" if use_dynamic else "Static benchmarks"}<br>
+                📊 Scope: {"Complete sector analysis" if result_limit == 0 else f"Top {result_limit} filtered results"}
             </div>
             ''', unsafe_allow_html=True)
             
@@ -1545,16 +1574,17 @@ if mode == "🎯 Dynamic Sector Screeners":
                 display_df[display_columns],
                 use_container_width=True,
                 hide_index=True,
-                height=400
+                height=min(600, len(display_df) * 35 + 100)  # Adjust height based on results
             )
             
             # Download option with enhanced data
             csv = results_df.to_csv(index=False)
             timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-            filename = f"NYZTrade_Dynamic_{screener_config['sector'].replace(' & ', '_')}_Screen_{timestamp}.csv"
+            scope = "Complete" if result_limit == 0 else f"Top{result_limit}"
+            filename = f"NYZTrade_Dynamic_{screener_config['sector'].replace(' & ', '_')}_{scope}_Screen_{timestamp}.csv"
             
             st.download_button(
-                "📥 Download Dynamic Results (CSV)",
+                f"📥 Download Dynamic Results ({len(results_df)} stocks)",
                 data=csv,
                 file_name=filename,
                 mime="text/csv",
