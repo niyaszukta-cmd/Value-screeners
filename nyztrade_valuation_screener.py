@@ -924,77 +924,152 @@ def calculate_fair_value_and_upside(info, sector, dynamic_benchmarks=None):
 # SECTOR-BASED SCREENERS WITH DYNAMIC BENCHMARKS
 # ============================================================================
 def get_value_screeners():
-    """Define value-based screening strategies"""
-    return {
-        "💎 Deep Value Stocks": {
+    """Define sector-wise valuation-based screening strategies"""
+    
+    # Get all sectors
+    all_sectors = list(SECTOR_MAPPING.keys())
+    
+    screeners = {}
+    
+    # 1. UNDERVALUED STOCKS - for each sector
+    for sector in all_sectors:
+        sector_icon = get_sector_icon(sector)
+        screeners[f"{sector_icon} {sector} - Undervalued Stocks"] = {
+            'sector': sector,
             'strategy_type': 'undervalued',
-            'upside_min': 20.0,
-            'upside_max': 500.0,  # Exclude extreme outliers
-            'pe_max': 20.0,
-            'description': 'Deeply undervalued stocks with 20-500% upside potential'
-        },
-        
-        "📈 Overvalued Stocks": {
+            'upside_min': 15.0,
+            'upside_max': 500.0,  # Filter outliers
+            'pe_max_multiplier': 0.9,  # PE below sector average
+            'description': f'Undervalued {sector.lower()} stocks with 15-500% upside potential'
+        }
+    
+    # 2. OVERVALUED STOCKS - for each sector
+    for sector in all_sectors:
+        sector_icon = get_sector_icon(sector)
+        screeners[f"{sector_icon} {sector} - Overvalued Stocks"] = {
+            'sector': sector,
             'strategy_type': 'overvalued',
             'upside_min': -100.0,
             'upside_max': -5.0,  # Negative upside (overvalued)
-            'pe_min': 25.0,
-            'description': 'Overvalued stocks trading above fair value'
-        },
-        
-        "🚀 Undervalued Near 52W High": {
-            'strategy_type': 'undervalued_momentum',
-            'upside_min': 15.0,
-            'upside_max': 500.0,
-            'from_52w_high_max': -5.0,  # Within 5% of 52-week high
-            'pe_max': 25.0,
-            'description': 'Undervalued stocks near 52-week highs with momentum'
-        },
-        
-        "⚡ Undervalued with Momentum": {
-            'strategy_type': 'undervalued_momentum_plus',
+            'pe_min_multiplier': 1.3,  # PE above 1.3x sector average
+            'description': f'Overvalued {sector.lower()} stocks trading above fair value'
+        }
+    
+    # 3. UNDERVALUED NEAR 52W HIGH - for each sector
+    for sector in all_sectors:
+        sector_icon = get_sector_icon(sector)
+        screeners[f"{sector_icon} {sector} - Undervalued Near 52W High"] = {
+            'sector': sector,
+            'strategy_type': 'undervalued_near_high',
             'upside_min': 20.0,
             'upside_max': 500.0,
-            'from_52w_low_min': 20.0,  # At least 20% above 52-week low
-            'pe_max': 20.0,
-            'description': 'Undervalued stocks with strong price momentum'
-        },
-        
-        "🌱 Undervalued Growth Potential": {
-            'strategy_type': 'undervalued_growth',
+            'pe_max_multiplier': 0.8,  # Significantly undervalued
+            'from_52w_high_max': -5.0,  # Within 5% of 52W high
+            'from_52w_high_min': -20.0,  # But at least 5% away
+            'description': f'Undervalued {sector.lower()} stocks near 52-week highs'
+        }
+    
+    # 4. UNDERVALUED WITH MOMENTUM - for each sector
+    for sector in all_sectors:
+        sector_icon = get_sector_icon(sector)
+        screeners[f"{sector_icon} {sector} - Undervalued with Momentum"] = {
+            'sector': sector,
+            'strategy_type': 'undervalued_momentum',
             'upside_min': 25.0,
             'upside_max': 500.0,
-            'pe_max': 30.0,
-            'roe_min': 15.0,  # High ROE indicates growth potential
-            'description': 'Undervalued stocks with high growth potential (ROE > 15%)'
+            'pe_max_multiplier': 0.85,  # Undervalued
+            'from_52w_low_min': 25.0,  # At least 25% up from 52W low (momentum)
+            'from_52w_high_min': -50.0,  # Still away from high (room to grow)
+            'description': f'Undervalued {sector.lower()} stocks with strong price momentum'
         }
+    
+    # 5. UNDERVALUED WITH GROWTH POTENTIAL - for each sector
+    for sector in all_sectors:
+        sector_icon = get_sector_icon(sector)
+        screeners[f"{sector_icon} {sector} - Undervalued with Growth"] = {
+            'sector': sector,
+            'strategy_type': 'undervalued_growth',
+            'upside_min': 30.0,
+            'upside_max': 500.0,
+            'pe_max_multiplier': 0.8,  # Significantly undervalued
+            'roe_min': 12.0,  # Good profitability for growth
+            'description': f'Undervalued {sector.lower()} stocks with strong growth potential'
+        }
+    
+    return screeners
+
+def get_sector_icon(sector):
+    """Get icon for sector"""
+    icons = {
+        'Financial Services': '🏦',
+        'Technology': '💻', 
+        'Healthcare & Pharma': '💊',
+        'Industrial & Manufacturing': '🏭',
+        'Energy & Utilities': '⚡',
+        'Consumer & Retail': '🛒',
+        'Materials & Chemicals': '🧪',
+        'Real Estate & Construction': '🏠',
+        'Transportation': '🚛',
+        'Automotive': '🚗',
+        'Textiles': '🧵'
     }
+    return icons.get(sector, '📊')
 
 def run_value_screener(screener_config, criteria, limit=50):
-    """Run value-based screening across all sectors"""
+    """Run value-based screening for specific sector with dynamic benchmarks"""
     
-    # Get all stocks from all categories
-    all_stocks = {}
-    for category, stocks in INDIAN_STOCKS.items():
-        all_stocks.update(stocks)
-    
-    if not all_stocks:
-        return pd.DataFrame()
+    # Get sector stocks
+    if 'sector' in screener_config:
+        sector = screener_config['sector']
+        categories = SECTOR_MAPPING.get(sector, [])
+        sector_stocks = get_stocks_in_categories(categories)
+        
+        if not sector_stocks:
+            return pd.DataFrame()
+        
+        # Calculate dynamic benchmarks for this sector
+        with st.spinner(f"🧮 Calculating dynamic benchmarks for {sector}..."):
+            benchmarks = calculate_dynamic_sector_benchmarks(sector, sample_size=30)
+        
+        # Display calculated benchmarks
+        if benchmarks:
+            st.markdown(f'''
+            <div class="benchmark-box">
+                <h4>📊 Dynamic Sector Benchmarks for {sector}</h4>
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 15px; margin: 10px 0;">
+                    <div><strong>Average PE:</strong> {benchmarks.get('pe', 0):.2f}x</div>
+                    <div><strong>Average PB:</strong> {benchmarks.get('pb', 0):.2f}x</div>
+                    <div><strong>Average EV/EBITDA:</strong> {benchmarks.get('ev_ebitda', 0):.2f}x</div>
+                    <div><strong>Average ROE:</strong> {benchmarks.get('roe', 0):.1f}%</div>
+                </div>
+            </div>
+            ''', unsafe_allow_html=True)
+        
+        stock_items = list(sector_stocks.items())
+        st.info(f"🔍 Screening {len(stock_items):,} stocks in {sector} sector with {screener_config['strategy_type']} strategy")
+        
+    else:
+        # Fallback to all stocks (shouldn't happen with new structure)
+        all_stocks = {}
+        for category, stocks in INDIAN_STOCKS.items():
+            all_stocks.update(stocks)
+        stock_items = list(all_stocks.items())
+        benchmarks = None
+        sector = 'All Sectors'
+        st.info(f"🔍 Screening {len(stock_items):,} stocks across all sectors with {screener_config['strategy_type']} strategy")
     
     results = []
     progress_bar = st.progress(0)
     status_text = st.empty()
-    
-    stock_items = list(all_stocks.items())
     analyzed_count = 0
-    
-    st.info(f"🔍 Screening {len(stock_items):,} stocks across all sectors with {screener_config['strategy_type']} strategy")
+    missing_valuation_count = 0
+    outlier_count = 0
     
     for idx, (ticker, name) in enumerate(stock_items):
         # Update progress
         progress = min((idx + 1) / len(stock_items), 1.0)
         progress_bar.progress(progress)
-        status_text.text(f"Analyzing: {idx+1}/{len(stock_items)} - {ticker}")
+        status_text.text(f"Analyzing {sector}: {idx+1}/{len(stock_items)} - {ticker}")
         
         # Fetch stock data
         info, error = fetch_stock_data(ticker)
@@ -1002,20 +1077,17 @@ def run_value_screener(screener_config, criteria, limit=50):
         
         if not error and info:
             try:
-                # Find sector for this ticker
-                sector = 'Other'
-                for category, stocks in INDIAN_STOCKS.items():
-                    if ticker in stocks:
-                        sector = get_sector_from_category(category)
-                        break
+                # Calculate valuations with dynamic benchmarks
+                valuation_data = calculate_fair_value_and_upside(info, sector, benchmarks)
                 
-                # Calculate valuations
-                valuation_data = calculate_fair_value_and_upside(info, sector, None)
+                # CRITICAL FILTERS - Skip if no valuation data available
+                if valuation_data['avg_upside'] is None:
+                    missing_valuation_count += 1
+                    continue
                 
-                # Skip stocks without valuation data
-                if (not valuation_data['avg_upside'] or 
-                    not valuation_data['avg_fair_value'] or 
-                    valuation_data['avg_upside'] == 0):
+                # CRITICAL FILTERS - Skip outliers (upside > 500%)
+                if valuation_data['avg_upside'] > 500:
+                    outlier_count += 1
                     continue
                 
                 price = info.get('currentPrice', 0) or info.get('regularMarketPrice', 0)
@@ -1035,37 +1107,8 @@ def run_value_screener(screener_config, criteria, limit=50):
                     pct_from_high = ((high_52w - price) / high_52w * 100)
                     pct_from_low = ((price - low_52w) / low_52w * 100)
                 
-                # Apply value-based filters
-                passes = True
-                upside = valuation_data['avg_upside']
-                
-                # Core upside filters (exclude outliers > 500%)
-                if 'upside_min' in criteria and upside < criteria['upside_min']:
-                    passes = False
-                if 'upside_max' in criteria and upside > criteria['upside_max']:
-                    passes = False
-                
-                # PE filters
-                if passes and 'pe_max' in criteria and pe_ratio:
-                    if pe_ratio > criteria['pe_max']:
-                        passes = False
-                if passes and 'pe_min' in criteria and pe_ratio:
-                    if pe_ratio < criteria['pe_min']:
-                        passes = False
-                
-                # 52-week position filters
-                if passes and 'from_52w_high_max' in criteria and pct_from_high is not None:
-                    if -pct_from_high > criteria['from_52w_high_max']:  # Convert to negative for comparison
-                        passes = False
-                
-                if passes and 'from_52w_low_min' in criteria and pct_from_low is not None:
-                    if pct_from_low < criteria['from_52w_low_min']:
-                        passes = False
-                
-                # ROE filter for growth potential
-                if passes and 'roe_min' in criteria and roe:
-                    if (roe * 100) < criteria['roe_min']:  # Convert ROE to percentage
-                        passes = False
+                # Apply strategy-specific filters
+                passes = apply_strategy_filters(screener_config, valuation_data, pe_ratio, roe, pct_from_high, pct_from_low, benchmarks)
                 
                 if passes:
                     results.append({
@@ -1079,6 +1122,7 @@ def run_value_screener(screener_config, criteria, limit=50):
                         'PB Ratio': pb_ratio,
                         'Fair Value': valuation_data['avg_fair_value'],
                         'Upside %': valuation_data['avg_upside'],
+                        'PE vs Sector': (pe_ratio / benchmarks.get('pe', 1)) if pe_ratio and benchmarks else None,
                         'ROE %': (roe * 100) if roe else 0,
                         'Dividend Yield': dividend_yield * 100 if dividend_yield else 0,
                         '52W High': high_52w,
@@ -1098,9 +1142,56 @@ def run_value_screener(screener_config, criteria, limit=50):
     status_text.empty()
     
     # Display analysis summary
-    st.success(f"✅ Analyzed {analyzed_count:,} stocks | Found {len(results)} matching opportunities")
+    st.success(f"✅ Analyzed {analyzed_count:,} stocks | Found {len(results)} opportunities | Excluded {missing_valuation_count} (no valuation) + {outlier_count} outliers (>500%)")
     
     return pd.DataFrame(results)
+
+def apply_strategy_filters(screener_config, valuation_data, pe_ratio, roe, pct_from_high, pct_from_low, benchmarks):
+    """Apply strategy-specific filters"""
+    
+    strategy = screener_config.get('strategy_type', '')
+    passes = True
+    
+    # Upside filters (common to all strategies)
+    upside = valuation_data['avg_upside']
+    if 'upside_min' in screener_config and upside < screener_config['upside_min']:
+        passes = False
+    if 'upside_max' in screener_config and upside > screener_config['upside_max']:
+        passes = False
+    
+    # PE filters with dynamic benchmarks
+    if passes and benchmarks:
+        sector_pe = benchmarks.get('pe', 20.0)
+        
+        if 'pe_max_multiplier' in screener_config:
+            max_pe = sector_pe * screener_config['pe_max_multiplier']
+            if pe_ratio and pe_ratio > max_pe:
+                passes = False
+        
+        if 'pe_min_multiplier' in screener_config:
+            min_pe = sector_pe * screener_config['pe_min_multiplier']
+            if pe_ratio and pe_ratio < min_pe:
+                passes = False
+    
+    # ROE filters for growth strategies
+    if passes and 'roe_min' in screener_config:
+        if not roe or (roe * 100) < screener_config['roe_min']:
+            passes = False
+    
+    # 52-week filters for momentum strategies
+    if passes and 'from_52w_high_max' in screener_config:
+        if not pct_from_high or (-pct_from_high) > screener_config['from_52w_high_max']:
+            passes = False
+    
+    if passes and 'from_52w_high_min' in screener_config:
+        if not pct_from_high or (-pct_from_high) < screener_config['from_52w_high_min']:
+            passes = False
+    
+    if passes and 'from_52w_low_min' in screener_config:
+        if not pct_from_low or pct_from_low < screener_config['from_52w_low_min']:
+            passes = False
+    
+    return passes
 
 # ============================================================================
 # INDIVIDUAL STOCK ANALYSIS WITH DYNAMIC BENCHMARKS
@@ -1235,17 +1326,17 @@ def create_gauge_chart(upside_pe, upside_ev):
 
 st.markdown('''
 <div class="main-header">
-    NYZTRADE VALUE SCREENER
+    NYZTRADE SECTOR SCREENER
 </div>
 <div class="sub-header">
-    💎 Advanced Value Analysis | 5 Screening Strategies | Outlier Filtering | Quality Validation
+    🎯 55 Sector-Wise Screeners | 5 Valuation Strategies | Dynamic Benchmarks | Outlier Filtering
 </div>
 ''', unsafe_allow_html=True)
 
 # ============================================================================
 # STOCK UNIVERSE OVERVIEW
 # ============================================================================
-st.markdown('<div class="section-header">📊 Stock Universe & Value Screening</div>', unsafe_allow_html=True)
+st.markdown('<div class="section-header">📊 Sector-Wise Valuation Screening</div>', unsafe_allow_html=True)
 
 # Calculate statistics
 sector_stocks = get_all_stocks_by_sector()
@@ -1355,19 +1446,31 @@ with st.sidebar:
         
         # Show screener details
         screener_config = value_screeners[selected_screener]
-        total_stock_count = sum(len(stocks) for stocks in INDIAN_STOCKS.values())
+        
+        # Extract sector from screener name
+        if 'sector' in screener_config:
+            sector = screener_config['sector']
+            sector_stock_count = get_sector_stock_count(sector)
+            st.markdown(f"**🏢 Sector:** {sector}")
+            st.markdown(f"**📊 Sector Stocks:** {sector_stock_count:,}")
+        else:
+            total_stock_count = sum(len(stocks) for stocks in INDIAN_STOCKS.values())
+            st.markdown(f"**📊 Universe:** {total_stock_count:,} stocks across all sectors")
         
         st.markdown(f"**📋 {screener_config['description']}**")
         st.markdown(f"**🎯 Strategy:** {screener_config['strategy_type']}")
-        st.markdown(f"**📊 Universe:** {total_stock_count:,} stocks across all sectors")
         
-        # Show key criteria
+        # Show key criteria with dynamic benchmark info
         if 'upside_min' in screener_config:
             st.markdown(f"**📈 Min Upside:** {screener_config['upside_min']}%")
         if 'upside_max' in screener_config:
-            st.markdown(f"**⚠️ Max Upside:** {screener_config['upside_max']}% (outlier limit)")
-        if 'pe_max' in screener_config:
-            st.markdown(f"**💰 Max PE:** {screener_config['pe_max']}x")
+            st.markdown(f"**⚠️ Max Upside:** {screener_config['upside_max']}% (outlier filter)")
+        if 'pe_max_multiplier' in screener_config:
+            st.markdown(f"**💰 PE Filter:** {screener_config['pe_max_multiplier']}x sector average")
+        if 'pe_min_multiplier' in screener_config:
+            st.markdown(f"**💰 PE Filter:** ≥{screener_config['pe_min_multiplier']}x sector average")
+        if 'roe_min' in screener_config:
+            st.markdown(f"**🌱 Min ROE:** {screener_config['roe_min']}%")
         
         # Advanced filters
         with st.expander("🔧 Advanced Filters"):
@@ -1384,9 +1487,9 @@ with st.sidebar:
             # Override default criteria with consistent float types
             custom_upside_min = st.number_input(
                 "Custom Min Upside %", 
-                value=float(screener_config.get('upside_min', 0)), 
+                value=float(screener_config.get('upside_min', 15)), 
                 min_value=0.0, 
-                max_value=1000.0, 
+                max_value=100.0, 
                 step=5.0
             )
             
@@ -1394,20 +1497,48 @@ with st.sidebar:
                 "Custom Max Upside % (Outlier Filter)", 
                 value=float(screener_config.get('upside_max', 500)), 
                 min_value=100.0, 
-                max_value=2000.0, 
+                max_value=1000.0, 
                 step=50.0,
                 help="Exclude extreme outliers above this upside %"
             )
             
-            custom_pe_max = st.number_input(
-                "Custom Max PE Ratio", 
-                value=float(screener_config.get('pe_max', 50)), 
-                min_value=5.0, 
-                max_value=100.0, 
-                step=5.0
-            )
+            # PE multiplier for dynamic benchmarks
+            if 'pe_max_multiplier' in screener_config:
+                custom_pe_multiplier = st.number_input(
+                    "Custom PE Multiplier (vs Sector Average)", 
+                    value=float(screener_config.get('pe_max_multiplier', 1.0)), 
+                    min_value=0.5, 
+                    max_value=2.0, 
+                    step=0.1,
+                    help="PE ratio as multiple of sector average (e.g., 0.8 = 80% of sector PE)"
+                )
+            elif 'pe_min_multiplier' in screener_config:
+                custom_pe_multiplier = st.number_input(
+                    "Custom PE Multiplier (vs Sector Average)", 
+                    value=float(screener_config.get('pe_min_multiplier', 1.0)), 
+                    min_value=1.0, 
+                    max_value=3.0, 
+                    step=0.1,
+                    help="Minimum PE ratio as multiple of sector average"
+                )
+            else:
+                custom_pe_multiplier = None
             
-            st.info("🎯 Stocks without valuation data are automatically excluded")
+            # ROE filter for growth strategies
+            if 'roe_min' in screener_config:
+                custom_roe_min = st.number_input(
+                    "Custom Min ROE %", 
+                    value=float(screener_config.get('roe_min', 12)), 
+                    min_value=0.0, 
+                    max_value=50.0, 
+                    step=2.0,
+                    help="Minimum Return on Equity for growth potential"
+                )
+            else:
+                custom_roe_min = None
+            
+            st.info("🎯 Stocks without valuation data and outliers >500% are automatically excluded")
+            st.info("🧮 Dynamic sector benchmarks are calculated in real-time")
         
         run_screener = st.button("🚀 RUN VALUE SCREENER", use_container_width=True, type="primary")
     
@@ -1479,46 +1610,44 @@ if mode == "🎯 Value-Based Screeners":
         screener_config = value_screeners[selected_screener]
         
         # Update criteria with custom values
-        criteria = {
-            'upside_min': custom_upside_min,
-            'upside_max': custom_upside_max,
-        }
+        updated_config = screener_config.copy()
+        updated_config['upside_min'] = custom_upside_min
+        updated_config['upside_max'] = custom_upside_max
         
-        # Add PE filters
-        if 'pe_max' in screener_config:
-            criteria['pe_max'] = custom_pe_max
-        if 'pe_min' in screener_config:
-            criteria['pe_min'] = screener_config['pe_min']
-            
-        # Add specific strategy filters
-        if 'from_52w_high_max' in screener_config:
-            criteria['from_52w_high_max'] = screener_config['from_52w_high_max']
-        if 'from_52w_low_min' in screener_config:
-            criteria['from_52w_low_min'] = screener_config['from_52w_low_min']
-        if 'roe_min' in screener_config:
-            criteria['roe_min'] = screener_config['roe_min']
+        # Update PE multiplier if applicable
+        if custom_pe_multiplier is not None:
+            if 'pe_max_multiplier' in screener_config:
+                updated_config['pe_max_multiplier'] = custom_pe_multiplier
+            elif 'pe_min_multiplier' in screener_config:
+                updated_config['pe_min_multiplier'] = custom_pe_multiplier
+        
+        # Update ROE if applicable  
+        if custom_roe_min is not None:
+            updated_config['roe_min'] = custom_roe_min
         
         st.markdown(f'''
         <div class="highlight-box">
             <h3>💎 {selected_screener}</h3>
-            <p><strong>Strategy:</strong> {screener_config['strategy_type'].replace('_', ' ').title()}</p>
-            <p><strong>Description:</strong> {screener_config['description']}</p>
-            <p><strong>Filters:</strong> Upside {custom_upside_min}% to {custom_upside_max}%, Max PE {custom_pe_max}x</p>
-            <p><strong>Scope:</strong> All sectors (8,984 stocks), excluding outliers and missing valuation data</p>
+            <p><strong>Sector:</strong> {updated_config.get('sector', 'All Sectors')}</p>
+            <p><strong>Strategy:</strong> {updated_config['strategy_type'].replace('_', ' ').title()}</p>
+            <p><strong>Description:</strong> {updated_config['description']}</p>
+            <p><strong>Dynamic Filters:</strong> Upside {custom_upside_min}% to {custom_upside_max}%</p>
+            <p><strong>Scope:</strong> Sector-specific analysis with dynamic benchmarks</p>
         </div>
         ''', unsafe_allow_html=True)
         
         # Run the value screener
-        results_df = run_value_screener(screener_config, criteria, result_limit)
+        results_df = run_value_screener(updated_config, None, result_limit)
         
         if results_df.empty:
             st.warning("❌ No stocks match the screening criteria. Try relaxing the filters.")
         else:
             st.markdown(f'''
             <div class="success-message">
-                ✅ Found <strong>{len(results_df)}</strong> {screener_config['strategy_type'].replace('_', ' ')} opportunities<br>
-                📊 Strategy: {screener_config['description']}<br>
-                🎯 Filtered: Excluded outliers (>{custom_upside_max}%) and stocks without valuation data
+                ✅ Found <strong>{len(results_df)}</strong> {updated_config['strategy_type'].replace('_', ' ')} opportunities in {updated_config.get('sector', 'All Sectors')}<br>
+                📊 Strategy: {updated_config['description']}<br>
+                🎯 Filtered: Excluded outliers (>{custom_upside_max}%) and stocks without valuation data<br>
+                🧮 Analysis: Real-time dynamic benchmarks applied
             </div>
             ''', unsafe_allow_html=True)
             
