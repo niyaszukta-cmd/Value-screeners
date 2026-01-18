@@ -923,167 +923,107 @@ def calculate_fair_value_and_upside(info, sector, dynamic_benchmarks=None):
 # ============================================================================
 # SECTOR-BASED SCREENERS WITH DYNAMIC BENCHMARKS
 # ============================================================================
-def get_sector_screeners():
-    """Define sector-based preset screeners with dynamic benchmark awareness"""
+def get_value_screeners():
+    """Define value-based screening strategies"""
     return {
-        "🏦 Financial Services Opportunities": {
-            'sector': 'Financial Services',
-            'upside_min': 15.0,
-            'pe_max_multiplier': 1.3,  # 30% above sector average
-            'description': 'Undervalued financial stocks with PE below 1.3x sector average'
-        },
-        
-        "💻 Technology Growth Stocks": {
-            'sector': 'Technology',
+        "💎 Deep Value Stocks": {
+            'strategy_type': 'undervalued',
             'upside_min': 20.0,
-            'pe_max_multiplier': 1.2,
-            'description': 'High-growth tech stocks with PE below 1.2x sector average'
+            'upside_max': 500.0,  # Exclude extreme outliers
+            'pe_max': 20.0,
+            'description': 'Deeply undervalued stocks with 20-500% upside potential'
         },
         
-        "💊 Healthcare & Pharma Leaders": {
-            'sector': 'Healthcare & Pharma',
-            'upside_min': 18.0,
-            'pe_max_multiplier': 1.25,
-            'description': 'Healthcare leaders with PE below 1.25x sector average'
+        "📈 Overvalued Stocks": {
+            'strategy_type': 'overvalued',
+            'upside_min': -100.0,
+            'upside_max': -5.0,  # Negative upside (overvalued)
+            'pe_min': 25.0,
+            'description': 'Overvalued stocks trading above fair value'
         },
         
-        "🏭 Industrial Powerhouses": {
-            'sector': 'Industrial & Manufacturing',
+        "🚀 Undervalued Near 52W High": {
+            'strategy_type': 'undervalued_momentum',
             'upside_min': 15.0,
-            'pe_max_multiplier': 1.2,
-            'description': 'Industrial stocks with PE below 1.2x sector average'
+            'upside_max': 500.0,
+            'from_52w_high_max': -5.0,  # Within 5% of 52-week high
+            'pe_max': 25.0,
+            'description': 'Undervalued stocks near 52-week highs with momentum'
         },
         
-        "⚡ Energy & Utilities Value": {
-            'sector': 'Energy & Utilities',
-            'upside_min': 12.0,
-            'pe_max_multiplier': 1.4,
-            'description': 'Value opportunities with PE below 1.4x sector average'
-        },
-        
-        "🛒 Consumer & Retail Stars": {
-            'sector': 'Consumer & Retail',
-            'upside_min': 15.0,
-            'pe_max_multiplier': 1.1,
-            'description': 'Consumer brands with PE below 1.1x sector average'
-        },
-        
-        "🧪 Materials & Chemicals": {
-            'sector': 'Materials & Chemicals',
-            'upside_min': 15.0,
-            'pe_max_multiplier': 1.3,
-            'description': 'Chemical sector with PE below 1.3x sector average'
-        },
-        
-        "🏠 Real Estate & Construction": {
-            'sector': 'Real Estate & Construction',
+        "⚡ Undervalued with Momentum": {
+            'strategy_type': 'undervalued_momentum_plus',
             'upside_min': 20.0,
-            'pe_max_multiplier': 1.2,
-            'description': 'Real estate with PE below 1.2x sector average'
+            'upside_max': 500.0,
+            'from_52w_low_min': 20.0,  # At least 20% above 52-week low
+            'pe_max': 20.0,
+            'description': 'Undervalued stocks with strong price momentum'
         },
         
-        "🚛 Transportation Leaders": {
-            'sector': 'Transportation',
-            'upside_min': 15.0,
-            'pe_max_multiplier': 1.3,
-            'description': 'Transportation with PE below 1.3x sector average'
-        },
-        
-        "🚗 Automotive Sector": {
-            'sector': 'Automotive',
-            'upside_min': 15.0,
-            'pe_max_multiplier': 1.2,
-            'description': 'Auto sector with PE below 1.2x sector average'
-        },
-        
-        "🧵 Textiles Value Picks": {
-            'sector': 'Textiles',
-            'upside_min': 18.0,
-            'pe_max_multiplier': 1.1,
-            'description': 'Textile sector with PE below 1.1x sector average'
+        "🌱 Undervalued Growth Potential": {
+            'strategy_type': 'undervalued_growth',
+            'upside_min': 25.0,
+            'upside_max': 500.0,
+            'pe_max': 30.0,
+            'roe_min': 15.0,  # High ROE indicates growth potential
+            'description': 'Undervalued stocks with high growth potential (ROE > 15%)'
         }
     }
 
-def run_dynamic_sector_screener(sector, criteria, limit=25, use_dynamic_benchmarks=True):
-    """Run screening with dynamic benchmarks"""
+def run_value_screener(screener_config, criteria, limit=50):
+    """Run value-based screening across all sectors"""
     
-    # Get categories for this sector
-    categories = SECTOR_MAPPING.get(sector, [])
-    if not categories:
-        return pd.DataFrame(), None
+    # Get all stocks from all categories
+    all_stocks = {}
+    for category, stocks in INDIAN_STOCKS.items():
+        all_stocks.update(stocks)
     
-    # Get all stocks in these categories
-    stocks = get_stocks_in_categories(categories)
-    
-    if not stocks:
-        return pd.DataFrame(), None
-    
-    # Calculate dynamic benchmarks if requested
-    benchmarks = None
-    if use_dynamic_benchmarks:
-        benchmark_progress = st.progress(0)
-        benchmark_status = st.empty()
-        
-        def benchmark_callback(message, progress):
-            benchmark_status.text(message)
-            benchmark_progress.progress(progress)
-        
-        benchmark_status.text(f"🧮 Calculating dynamic benchmarks for {sector}...")
-        benchmarks = calculate_dynamic_sector_benchmarks(sector, sample_size=30, _progress_callback=benchmark_callback)
-        
-        benchmark_progress.empty()
-        benchmark_status.empty()
-        
-        # Display calculated benchmarks
-        if benchmarks:
-            st.markdown(f'''
-            <div class="benchmark-box">
-                <h4>📊 Dynamic Sector Benchmarks for {sector}</h4>
-                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 15px; margin: 10px 0;">
-                    <div><strong>Average PE:</strong> {benchmarks.get('pe', 0):.2f}x</div>
-                    <div><strong>Average PB:</strong> {benchmarks.get('pb', 0):.2f}x</div>
-                    <div><strong>Average EV/EBITDA:</strong> {benchmarks.get('ev_ebitda', 0):.2f}x</div>
-                    <div><strong>Average ROE:</strong> {benchmarks.get('roe', 0):.1f}%</div>
-                </div>
-                <p style="font-size: 0.9rem; margin-top: 10px;">
-                    ✨ These benchmarks are calculated from real sector data, excluding outliers
-                </p>
-            </div>
-            ''', unsafe_allow_html=True)
+    if not all_stocks:
+        return pd.DataFrame()
     
     results = []
     progress_bar = st.progress(0)
     status_text = st.empty()
     
-    stock_items = list(stocks.items())
+    stock_items = list(all_stocks.items())
+    analyzed_count = 0
     
-    # Calculate dynamic PE limit if using multiplier
-    pe_limit = None
-    if 'pe_max_multiplier' in criteria and benchmarks:
-        pe_limit = benchmarks['pe'] * criteria['pe_max_multiplier']
-        st.info(f"📊 Dynamic PE filter: {pe_limit:.2f}x ({criteria['pe_max_multiplier']:.1f}x sector average of {benchmarks['pe']:.2f}x)")
-    elif 'pe_max' in criteria:
-        pe_limit = criteria['pe_max']
+    st.info(f"🔍 Screening {len(stock_items):,} stocks across all sectors with {screener_config['strategy_type']} strategy")
     
     for idx, (ticker, name) in enumerate(stock_items):
         # Update progress
         progress = min((idx + 1) / len(stock_items), 1.0)
         progress_bar.progress(progress)
-        status_text.text(f"Screening {sector}: {idx+1}/{len(stock_items)} - {ticker}")
+        status_text.text(f"Analyzing: {idx+1}/{len(stock_items)} - {ticker}")
         
         # Fetch stock data
         info, error = fetch_stock_data(ticker)
+        analyzed_count += 1
         
         if not error and info:
             try:
-                # Calculate valuations with dynamic benchmarks
-                valuation_data = calculate_fair_value_and_upside(info, sector, benchmarks)
+                # Find sector for this ticker
+                sector = 'Other'
+                for category, stocks in INDIAN_STOCKS.items():
+                    if ticker in stocks:
+                        sector = get_sector_from_category(category)
+                        break
+                
+                # Calculate valuations
+                valuation_data = calculate_fair_value_and_upside(info, sector, None)
+                
+                # Skip stocks without valuation data
+                if (not valuation_data['avg_upside'] or 
+                    not valuation_data['avg_fair_value'] or 
+                    valuation_data['avg_upside'] == 0):
+                    continue
                 
                 price = info.get('currentPrice', 0) or info.get('regularMarketPrice', 0)
                 market_cap = info.get('marketCap', 0)
                 pe_ratio = info.get('trailingPE', 0)
                 pb_ratio = info.get('priceToBook', 0)
                 dividend_yield = info.get('dividendYield', 0)
+                roe = info.get('returnOnEquity', 0)
                 
                 # 52-week data
                 high_52w = info.get('fiftyTwoWeekHigh', 0)
@@ -1095,17 +1035,36 @@ def run_dynamic_sector_screener(sector, criteria, limit=25, use_dynamic_benchmar
                     pct_from_high = ((high_52w - price) / high_52w * 100)
                     pct_from_low = ((price - low_52w) / low_52w * 100)
                 
-                # Apply filters
+                # Apply value-based filters
                 passes = True
+                upside = valuation_data['avg_upside']
                 
-                # Upside filter
-                if 'upside_min' in criteria and valuation_data['avg_upside']:
-                    if valuation_data['avg_upside'] < criteria['upside_min']:
+                # Core upside filters (exclude outliers > 500%)
+                if 'upside_min' in criteria and upside < criteria['upside_min']:
+                    passes = False
+                if 'upside_max' in criteria and upside > criteria['upside_max']:
+                    passes = False
+                
+                # PE filters
+                if passes and 'pe_max' in criteria and pe_ratio:
+                    if pe_ratio > criteria['pe_max']:
+                        passes = False
+                if passes and 'pe_min' in criteria and pe_ratio:
+                    if pe_ratio < criteria['pe_min']:
                         passes = False
                 
-                # PE filter (dynamic or static)
-                if passes and pe_limit and pe_ratio:
-                    if pe_ratio > pe_limit:
+                # 52-week position filters
+                if passes and 'from_52w_high_max' in criteria and pct_from_high is not None:
+                    if -pct_from_high > criteria['from_52w_high_max']:  # Convert to negative for comparison
+                        passes = False
+                
+                if passes and 'from_52w_low_min' in criteria and pct_from_low is not None:
+                    if pct_from_low < criteria['from_52w_low_min']:
+                        passes = False
+                
+                # ROE filter for growth potential
+                if passes and 'roe_min' in criteria and roe:
+                    if (roe * 100) < criteria['roe_min']:  # Convert ROE to percentage
                         passes = False
                 
                 if passes:
@@ -1120,8 +1079,7 @@ def run_dynamic_sector_screener(sector, criteria, limit=25, use_dynamic_benchmar
                         'PB Ratio': pb_ratio,
                         'Fair Value': valuation_data['avg_fair_value'],
                         'Upside %': valuation_data['avg_upside'],
-                        'Benchmark PE': valuation_data.get('benchmark_pe'),
-                        'PE vs Sector': (pe_ratio / valuation_data.get('benchmark_pe', 1)) if pe_ratio and valuation_data.get('benchmark_pe') else None,
+                        'ROE %': (roe * 100) if roe else 0,
                         'Dividend Yield': dividend_yield * 100 if dividend_yield else 0,
                         '52W High': high_52w,
                         '52W Low': low_52w,
@@ -1139,7 +1097,10 @@ def run_dynamic_sector_screener(sector, criteria, limit=25, use_dynamic_benchmar
     progress_bar.empty()
     status_text.empty()
     
-    return pd.DataFrame(results), benchmarks
+    # Display analysis summary
+    st.success(f"✅ Analyzed {analyzed_count:,} stocks | Found {len(results)} matching opportunities")
+    
+    return pd.DataFrame(results)
 
 # ============================================================================
 # INDIVIDUAL STOCK ANALYSIS WITH DYNAMIC BENCHMARKS
@@ -1227,7 +1188,7 @@ def create_gauge_chart(upside_pe, upside_ev):
         value=upside_pe if upside_pe else 0,
         number={'suffix': "%", 'font': {'size': 36, 'color': '#e2e8f0'}},
         delta={'reference': 0, 'increasing': {'color': "#34d399"}, 'decreasing': {'color': "#f87171"}},
-        title={'text': "PE Method (Dynamic)", 'font': {'size': 16, 'color': '#a78bfa'}},
+        title={'text': "PE Method", 'font': {'size': 16, 'color': '#a78bfa'}},
         gauge={
             'axis': {'range': [-50, 50]},
             'bar': {'color': "#7c3aed"},
@@ -1246,7 +1207,7 @@ def create_gauge_chart(upside_pe, upside_ev):
         value=upside_ev if upside_ev else 0,
         number={'suffix': "%", 'font': {'size': 36, 'color': '#e2e8f0'}},
         delta={'reference': 0, 'increasing': {'color': "#34d399"}, 'decreasing': {'color': "#f87171"}},
-        title={'text': "EV/EBITDA Method (Dynamic)", 'font': {'size': 16, 'color': '#a78bfa'}},
+        title={'text': "EV/EBITDA Method", 'font': {'size': 16, 'color': '#a78bfa'}},
         gauge={
             'axis': {'range': [-50, 50]},
             'bar': {'color': "#ec4899"},
@@ -1274,17 +1235,17 @@ def create_gauge_chart(upside_pe, upside_ev):
 
 st.markdown('''
 <div class="main-header">
-    NYZTRADE DYNAMIC SCREENER
+    NYZTRADE VALUE SCREENER
 </div>
 <div class="sub-header">
-    🧮 AI-Powered Dynamic Benchmarks | Real-Time Sector Analysis | Outlier-Free Calculations
+    💎 Advanced Value Analysis | 5 Screening Strategies | Outlier Filtering | Quality Validation
 </div>
 ''', unsafe_allow_html=True)
 
 # ============================================================================
 # STOCK UNIVERSE OVERVIEW
 # ============================================================================
-st.markdown('<div class="section-header">📊 Stock Universe & Dynamic Benchmarks</div>', unsafe_allow_html=True)
+st.markdown('<div class="section-header">📊 Stock Universe & Value Screening</div>', unsafe_allow_html=True)
 
 # Calculate statistics
 sector_stocks = get_all_stocks_by_sector()
@@ -1306,48 +1267,48 @@ with col1:
 with col2:
     st.markdown(f'''
     <div class="metric-card">
-        <div style="font-size: 2rem; font-weight: bold; color: #a78bfa;">{total_sectors}</div>
-        <div style="color: #94a3b8;">🏢 Dynamic Sectors</div>
+        <div style="font-size: 2rem; font-weight: bold; color: #a78bfa;">5</div>
+        <div style="color: #94a3b8;">🎯 Value Strategies</div>
     </div>
     ''', unsafe_allow_html=True)
 
 with col3:
     st.markdown(f'''
     <div class="metric-card">
-        <div style="font-size: 2rem; font-weight: bold; color: #a78bfa;">IQR</div>
-        <div style="color: #94a3b8;">🎯 Outlier Removal</div>
+        <div style="font-size: 2rem; font-weight: bold; color: #a78bfa;">500%</div>
+        <div style="color: #94a3b8;">⚠️ Outlier Filter</div>
     </div>
     ''', unsafe_allow_html=True)
 
 with col4:
     st.markdown(f'''
     <div class="metric-card">
-        <div style="font-size: 2rem; font-weight: bold; color: #a78bfa;">6H</div>
-        <div style="color: #94a3b8;">⚡ Benchmark Cache</div>
+        <div style="font-size: 2rem; font-weight: bold; color: #a78bfa;">✓</div>
+        <div style="color: #94a3b8;">🧮 Quality Validation</div>
     </div>
     ''', unsafe_allow_html=True)
 
 # Key features highlight
 st.markdown(f'''
 <div class="highlight-box">
-    <h3>🚀 Dynamic Benchmark Technology</h3>
+    <h3>💎 Advanced Value Screening Technology</h3>
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 15px 0;">
         <div>
-            <strong>✨ Real-Time Calculation:</strong> PE/PB/EV ratios calculated from actual sector data<br>
-            <strong>🎯 Outlier Exclusion:</strong> IQR method removes extreme values for accuracy<br>
-            <strong>📊 Smart Caching:</strong> 6-hour cache for optimal performance
+            <strong>💎 Deep Value Analysis:</strong> Identifies undervalued stocks with 20-500% upside potential<br>
+            <strong>🚀 Momentum Strategies:</strong> Finds undervalued stocks near 52-week highs<br>
+            <strong>🌱 Growth Potential:</strong> Combines value with high ROE for growth opportunities
         </div>
         <div>
-            <strong>⚡ Adaptive Screening:</strong> PE limits adjust to sector averages<br>
-            <strong>🧮 Statistical Rigor:</strong> Minimum 5 stocks required for reliable averages<br>
-            <strong>🔄 Auto-Fallback:</strong> Default benchmarks if calculation fails
+            <strong>⚠️ Outlier Protection:</strong> Excludes extreme outliers (>500% upside)<br>
+            <strong>🧮 Quality Validation:</strong> Only stocks with complete valuation data<br>
+            <strong>📊 Multi-Strategy:</strong> 5 distinct value-based screening approaches
         </div>
     </div>
 </div>
 ''', unsafe_allow_html=True)
 
 # Display sector breakdown with stock counts
-st.markdown("**📈 Sector Coverage for Dynamic Analysis:**")
+st.markdown("**📈 Multi-Sector Value Analysis Coverage:**")
 sector_breakdown = []
 for sector, categories in SECTOR_MAPPING.items():
     stock_count = sum(len(INDIAN_STOCKS.get(cat, {})) for cat in categories)
@@ -1359,7 +1320,7 @@ col1, col2 = st.columns(2)
 for i, (sector, count) in enumerate(sector_breakdown):
     col = col1 if i % 2 == 0 else col2
     with col:
-        st.markdown(f"• **{sector}**: {count:,} stocks → Dynamic benchmarks")
+        st.markdown(f"• **{sector}**: {count:,} stocks → Value screening")
 
 # ============================================================================
 # SIDEBAR CONTROLS
@@ -1378,77 +1339,86 @@ with st.sidebar:
     # MODE SELECTION
     mode = st.radio(
         "📊 Analysis Mode",
-        ["🎯 Dynamic Sector Screeners", "📈 Individual Stock Analysis"],
+        ["🎯 Value-Based Screeners", "📈 Individual Stock Analysis"],
         help="Choose your analysis approach"
     )
     
-    if mode == "🎯 Dynamic Sector Screeners":
-        st.markdown("### 🧮 Dynamic Sector Screeners")
+    if mode == "🎯 Value-Based Screeners":
+        st.markdown("### 💎 Value-Based Screeners")
         
-        sector_screeners = get_sector_screeners()
+        value_screeners = get_value_screeners()
         selected_screener = st.selectbox(
-            "Choose Dynamic Screener",
-            list(sector_screeners.keys()),
-            help="Select a sector screener with dynamic benchmarks"
+            "Choose Value Screener",
+            list(value_screeners.keys()),
+            help="Select a value-focused screening strategy"
         )
         
         # Show screener details
-        screener_config = sector_screeners[selected_screener]
-        sector_stock_count = get_sector_stock_count(screener_config['sector'])
+        screener_config = value_screeners[selected_screener]
+        total_stock_count = sum(len(stocks) for stocks in INDIAN_STOCKS.values())
         
         st.markdown(f"**📋 {screener_config['description']}**")
-        st.markdown(f"**🎯 Sector:** {screener_config['sector']}")
-        st.markdown(f"**📊 Available Stocks:** {sector_stock_count:,}")
-        st.markdown(f"**📈 Min Upside:** {screener_config['upside_min']}%")
-        st.markdown(f"**💰 PE Multiplier:** {screener_config['pe_max_multiplier']}x sector avg")
+        st.markdown(f"**🎯 Strategy:** {screener_config['strategy_type']}")
+        st.markdown(f"**📊 Universe:** {total_stock_count:,} stocks across all sectors")
         
-        # Dynamic benchmark toggle
-        use_dynamic = st.checkbox("🧮 Use Dynamic Benchmarks", value=True, 
-                                  help="Calculate real-time sector averages (recommended)")
+        # Show key criteria
+        if 'upside_min' in screener_config:
+            st.markdown(f"**📈 Min Upside:** {screener_config['upside_min']}%")
+        if 'upside_max' in screener_config:
+            st.markdown(f"**⚠️ Max Upside:** {screener_config['upside_max']}% (outlier limit)")
+        if 'pe_max' in screener_config:
+            st.markdown(f"**💰 Max PE:** {screener_config['pe_max']}x")
         
         # Advanced filters
         with st.expander("🔧 Advanced Filters"):
-            # Set maximum results to sector stock count
+            # Result limit
             result_limit = st.slider(
-                "Max Results (0 = All Stocks)", 
-                min_value=0, 
-                max_value=sector_stock_count, 
-                value=min(50, sector_stock_count), 
+                "Max Results", 
+                min_value=10, 
+                max_value=500, 
+                value=100, 
                 step=10,
-                help=f"0 means analyze ALL {sector_stock_count:,} stocks in this sector"
+                help="Maximum number of results to display"
             )
             
             # Override default criteria with consistent float types
-            custom_upside = st.number_input(
+            custom_upside_min = st.number_input(
                 "Custom Min Upside %", 
-                value=float(screener_config['upside_min']), 
+                value=float(screener_config.get('upside_min', 0)), 
                 min_value=0.0, 
+                max_value=1000.0, 
+                step=5.0
+            )
+            
+            custom_upside_max = st.number_input(
+                "Custom Max Upside % (Outlier Filter)", 
+                value=float(screener_config.get('upside_max', 500)), 
+                min_value=100.0, 
+                max_value=2000.0, 
+                step=50.0,
+                help="Exclude extreme outliers above this upside %"
+            )
+            
+            custom_pe_max = st.number_input(
+                "Custom Max PE Ratio", 
+                value=float(screener_config.get('pe_max', 50)), 
+                min_value=5.0, 
                 max_value=100.0, 
                 step=5.0
             )
             
-            custom_pe_multiplier = st.number_input(
-                "Custom PE Multiplier", 
-                value=float(screener_config['pe_max_multiplier']), 
-                min_value=0.5, 
-                max_value=3.0, 
-                step=0.1,
-                help="Multiplier of sector average PE"
-            )
-            
-            if result_limit == 0:
-                st.info(f"🎯 Will analyze ALL {sector_stock_count:,} stocks in {screener_config['sector']} sector")
+            st.info("🎯 Stocks without valuation data are automatically excluded")
         
-        run_screener = st.button("🚀 RUN DYNAMIC SCREENER", use_container_width=True, type="primary")
+        run_screener = st.button("🚀 RUN VALUE SCREENER", use_container_width=True, type="primary")
     
     else:  # Individual Stock Analysis
-        st.markdown("### 📈 Dynamic Individual Analysis")
+        st.markdown("### 📈 Individual Stock Analysis")
         
         # Sector selection for browsing
         browse_sector = st.selectbox(
             "🔍 Browse by Sector",
             ['All Sectors'] + list(SECTOR_MAPPING.keys()),
-            help="Filter stocks by sector for dynamic analysis"
+            help="Filter stocks by sector for analysis"
         )
         
         # Get stocks for selected sector
@@ -1477,7 +1447,7 @@ with st.sidebar:
             # Show first 100 stocks for performance
             filtered_stocks = dict(list(available_stocks.items())[:100])
         
-        st.info(f"Showing {len(filtered_stocks)} stocks with dynamic benchmarks")
+        st.info(f"Showing {len(filtered_stocks)} stocks for value analysis")
         
         if filtered_stocks:
             stock_options = [f"{name} ({ticker})" for ticker, name in filtered_stocks.items()]
@@ -1492,64 +1462,73 @@ with st.sidebar:
         manual_ticker = st.text_input(
             "✏️ Manual Ticker Entry",
             placeholder="e.g., RELIANCE.NS",
-            help="Enter any NSE/BSE ticker for dynamic analysis"
+            help="Enter any NSE/BSE ticker for analysis"
         )
         
         if manual_ticker:
             st.session_state.selected_stock_ticker = manual_ticker.upper()
         
-        analyze_stock = st.button("📊 DYNAMIC ANALYSIS", use_container_width=True, type="primary")
+        analyze_stock = st.button("📊 ANALYZE STOCK", use_container_width=True, type="primary")
 
 # ============================================================================
-# MAIN CONTENT - DYNAMIC SECTOR SCREENERS
+# MAIN CONTENT - VALUE-BASED SCREENERS
 # ============================================================================
 
-if mode == "🎯 Dynamic Sector Screeners":
+if mode == "🎯 Value-Based Screeners":
     if run_screener:
-        screener_config = sector_screeners[selected_screener]
+        screener_config = value_screeners[selected_screener]
         
-        # Update criteria
+        # Update criteria with custom values
         criteria = {
-            'upside_min': custom_upside,
-            'pe_max_multiplier': custom_pe_multiplier
+            'upside_min': custom_upside_min,
+            'upside_max': custom_upside_max,
         }
         
-        # Set limit: 0 means all stocks, otherwise use the specified limit
-        screen_limit = -1 if result_limit == 0 else result_limit
+        # Add PE filters
+        if 'pe_max' in screener_config:
+            criteria['pe_max'] = custom_pe_max
+        if 'pe_min' in screener_config:
+            criteria['pe_min'] = screener_config['pe_min']
+            
+        # Add specific strategy filters
+        if 'from_52w_high_max' in screener_config:
+            criteria['from_52w_high_max'] = screener_config['from_52w_high_max']
+        if 'from_52w_low_min' in screener_config:
+            criteria['from_52w_low_min'] = screener_config['from_52w_low_min']
+        if 'roe_min' in screener_config:
+            criteria['roe_min'] = screener_config['roe_min']
         
         st.markdown(f'''
         <div class="highlight-box">
-            <h3>🧮 {selected_screener}</h3>
-            <p><strong>Sector:</strong> {screener_config['sector']}</p>
-            <p><strong>Total Stocks:</strong> {get_sector_stock_count(screener_config['sector']):,}</p>
-            <p><strong>Analysis Scope:</strong> {"ALL stocks" if result_limit == 0 else f"Top {result_limit} results"}</p>
-            <p><strong>Strategy:</strong> {screener_config['description']}</p>
-            <p><strong>Dynamic Filters:</strong> Min Upside {custom_upside}%, PE ≤ {custom_pe_multiplier}x sector average</p>
-            <p><strong>Method:</strong> {"🧮 Dynamic Benchmarks" if use_dynamic else "📊 Static Benchmarks"}</p>
+            <h3>💎 {selected_screener}</h3>
+            <p><strong>Strategy:</strong> {screener_config['strategy_type'].replace('_', ' ').title()}</p>
+            <p><strong>Description:</strong> {screener_config['description']}</p>
+            <p><strong>Filters:</strong> Upside {custom_upside_min}% to {custom_upside_max}%, Max PE {custom_pe_max}x</p>
+            <p><strong>Scope:</strong> All sectors (8,984 stocks), excluding outliers and missing valuation data</p>
         </div>
         ''', unsafe_allow_html=True)
         
-        # Run the dynamic screener
-        results_df, calculated_benchmarks = run_dynamic_sector_screener(
-            screener_config['sector'], 
-            criteria, 
-            limit=screen_limit, 
-            use_dynamic_benchmarks=use_dynamic
-        )
+        # Run the value screener
+        results_df = run_value_screener(screener_config, criteria, result_limit)
         
         if results_df.empty:
-            st.warning("❌ No stocks match the dynamic screening criteria. Try relaxing the filters.")
+            st.warning("❌ No stocks match the screening criteria. Try relaxing the filters.")
         else:
             st.markdown(f'''
             <div class="success-message">
-                ✅ Found <strong>{len(results_df)}</strong> dynamic opportunities in {screener_config['sector']} sector<br>
-                🧮 Analysis Method: {"Dynamic sector benchmarks" if use_dynamic else "Static benchmarks"}<br>
-                📊 Scope: {"Complete sector analysis" if result_limit == 0 else f"Top {result_limit} filtered results"}
+                ✅ Found <strong>{len(results_df)}</strong> {screener_config['strategy_type'].replace('_', ' ')} opportunities<br>
+                📊 Strategy: {screener_config['description']}<br>
+                🎯 Filtered: Excluded outliers (>{custom_upside_max}%) and stocks without valuation data
             </div>
             ''', unsafe_allow_html=True)
             
-            # Sort by upside percentage
-            results_df = results_df.sort_values('Upside %', ascending=False, na_position='last')
+            # Sort by upside percentage appropriately
+            if screener_config['strategy_type'] == 'overvalued':
+                # For overvalued stocks, sort by most negative upside first
+                results_df = results_df.sort_values('Upside %', ascending=True, na_position='last')
+            else:
+                # For undervalued stocks, sort by highest upside first  
+                results_df = results_df.sort_values('Upside %', ascending=False, na_position='last')
             
             # Format the dataframe for display
             display_df = results_df.copy()
@@ -1560,14 +1539,20 @@ if mode == "🎯 Dynamic Sector Screeners":
             display_df['Fair Value'] = display_df['Fair Value'].apply(lambda x: f"₹{x:,.2f}" if pd.notna(x) and x > 0 else "N/A")
             display_df['Upside %'] = display_df['Upside %'].apply(lambda x: f"{x:+.1f}%" if pd.notna(x) else "N/A")
             display_df['PE Ratio'] = display_df['PE Ratio'].apply(lambda x: f"{x:.2f}" if pd.notna(x) and x > 0 else "N/A")
-            display_df['PE vs Sector'] = display_df['PE vs Sector'].apply(lambda x: f"{x:.2f}x" if pd.notna(x) else "N/A")
+            display_df['ROE %'] = display_df['ROE %'].apply(lambda x: f"{x:.1f}%" if pd.notna(x) else "N/A")
             display_df['From 52W High %'] = display_df['From 52W High %'].apply(lambda x: f"{x:+.1f}%" if pd.notna(x) else "N/A")
+            display_df['From 52W Low %'] = display_df['From 52W Low %'].apply(lambda x: f"{x:+.1f}%" if pd.notna(x) else "N/A")
             
             # Display results
-            st.markdown('<div class="section-header">🎯 Dynamic Screening Results</div>', unsafe_allow_html=True)
+            st.markdown('<div class="section-header">💎 Value Screening Results</div>', unsafe_allow_html=True)
             
-            # Show columns optimized for dynamic analysis
-            display_columns = ['Ticker', 'Name', 'Price', 'Fair Value', 'Upside %', 'PE Ratio', 'PE vs Sector', 'From 52W High %', 'Cap Type']
+            # Show columns optimized for value analysis
+            if screener_config['strategy_type'] in ['undervalued_momentum', 'undervalued_momentum_plus']:
+                display_columns = ['Ticker', 'Name', 'Sector', 'Price', 'Fair Value', 'Upside %', 'From 52W High %', 'From 52W Low %', 'PE Ratio']
+            elif screener_config['strategy_type'] == 'undervalued_growth':
+                display_columns = ['Ticker', 'Name', 'Sector', 'Price', 'Fair Value', 'Upside %', 'PE Ratio', 'ROE %', 'Cap Type']
+            else:
+                display_columns = ['Ticker', 'Name', 'Sector', 'Price', 'Fair Value', 'Upside %', 'PE Ratio', 'From 52W High %', 'Cap Type']
             
             st.dataframe(
                 display_df[display_columns],
@@ -1579,11 +1564,10 @@ if mode == "🎯 Dynamic Sector Screeners":
             # Download option with enhanced data
             csv = results_df.to_csv(index=False)
             timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-            scope = "Complete" if result_limit == 0 else f"Top{result_limit}"
-            filename = f"NYZTrade_Dynamic_{screener_config['sector'].replace(' & ', '_')}_{scope}_Screen_{timestamp}.csv"
+            filename = f"NYZTrade_{screener_config['strategy_type'].title()}_Screen_{timestamp}.csv"
             
             st.download_button(
-                f"📥 Download Dynamic Results ({len(results_df)} stocks)",
+                f"📥 Download Results ({len(results_df)} stocks)",
                 data=csv,
                 file_name=filename,
                 mime="text/csv",
@@ -1598,7 +1582,7 @@ elif mode == "📈 Individual Stock Analysis":
     if analyze_stock and hasattr(st.session_state, 'selected_stock_ticker'):
         ticker = st.session_state.selected_stock_ticker
         
-        with st.spinner(f"🧮 Running dynamic analysis for {ticker}..."):
+        with st.spinner(f"📊 Analyzing {ticker}..."):
             analysis, error = analyze_individual_stock_dynamic(ticker)
         
         if analysis:
@@ -1650,11 +1634,11 @@ elif mode == "📈 Individual Stock Analysis":
                 
                 st.markdown(f'''
                 <div class="metric-card">
-                    <h3>🧮 Dynamic Valuation Summary</h3>
+                    <h3>💎 Valuation Summary</h3>
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 15px 0;">
                         <div>
                             <div style="font-size: 1.8rem; font-weight: bold; color: #a78bfa;">₹{fair_value:,.2f}</div>
-                            <div style="color: #94a3b8;">Dynamic Fair Value</div>
+                            <div style="color: #94a3b8;">Fair Value</div>
                         </div>
                         <div>
                             <div style="font-size: 1.8rem; font-weight: bold; color: #e2e8f0;">₹{analysis["price"]:,.2f}</div>
@@ -1663,7 +1647,7 @@ elif mode == "📈 Individual Stock Analysis":
                     </div>
                     <div style="text-align: center; margin-top: 15px;">
                         <span style="font-size: 1.5rem; font-weight: bold; color: {'#34d399' if upside > 0 else '#f87171'};">
-                            {"📈" if upside > 0 else "📉"} {upside:+.1f}% Potential (Dynamic)
+                            {"📈" if upside > 0 else "📉"} {upside:+.1f}% Potential
                         </span>
                     </div>
                 </div>
@@ -1717,7 +1701,7 @@ elif mode == "📈 Individual Stock Analysis":
             
             # Dynamic valuation gauges
             if analysis['upside_pe'] is not None or analysis['upside_ev'] is not None:
-                st.markdown('<div class="section-header">🧮 Dynamic Valuation Methods</div>', unsafe_allow_html=True)
+                st.markdown('<div class="section-header">📊 Valuation Methods</div>', unsafe_allow_html=True)
                 fig_gauge = create_gauge_chart(
                     analysis['upside_pe'] if analysis['upside_pe'] else 0,
                     analysis['upside_ev'] if analysis['upside_ev'] else 0
@@ -1747,16 +1731,16 @@ elif mode == "📈 Individual Stock Analysis":
 # Footer
 st.markdown('''
 <div style="margin-top: 50px; padding: 30px; background: rgba(30, 41, 59, 0.4); border-radius: 15px; text-align: center;">
-    <h4 style="color: #a78bfa; margin-bottom: 15px;">NYZTrade Dynamic | AI-Powered Real-Time Benchmark Analysis</h4>
+    <h4 style="color: #a78bfa; margin-bottom: 15px;">NYZTrade Value | Advanced Multi-Strategy Value Analysis</h4>
     <div class="disclaimer">
-        ⚠️ <strong>Important Disclaimer:</strong> This platform uses dynamic benchmarks calculated from real market data, 
-        excluding statistical outliers for accuracy. The analysis, recommendations, and data presented here should not be 
-        considered as financial advice or investment recommendations. Dynamic benchmarks are recalculated regularly but may 
-        not reflect the latest market conditions. Always conduct your own research and consult with qualified financial 
-        professionals before making any investment decisions.
+        ⚠️ <strong>Important Disclaimer:</strong> This platform uses advanced value-based screening strategies with 
+        outlier filtering and quality validation. The analysis, recommendations, and data presented here should not be 
+        considered as financial advice or investment recommendations. Stocks with extreme outliers (>500% upside) are 
+        excluded to prevent unrealistic expectations. Only stocks with complete valuation data are included in results. 
+        Always conduct your own research and consult with qualified financial professionals before making any investment decisions.
     </div>
     <div style="margin-top: 15px; color: #64748b; font-size: 0.9rem;">
-        © 2024 NYZTrade Dynamic | Stock Universe: 8,984 Indian Stocks | Dynamic Benchmarks: IQR Outlier Removal | Cache: 6 Hours
+        © 2024 NYZTrade Value | Stock Universe: 8,984 Indian Stocks | Outlier Filter: >500% | Quality Validation: Complete Valuation Data Only
     </div>
 </div>
 ''', unsafe_allow_html=True)
