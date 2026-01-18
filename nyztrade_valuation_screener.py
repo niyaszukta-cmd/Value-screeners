@@ -32,6 +32,33 @@ st.set_page_config(
 # ============================================================================
 st.markdown("""
 <style>
+    /* Hide any unwanted debug text */
+    .stApp > div:first-child {
+        display: none;
+    }
+    
+    /* Hide any potential debug output */
+    .stApp p:first-of-type {
+        display: none;
+    }
+    
+    /* Hide any text that contains database or CSV references */
+    .stApp p:contains("Database Generated"),
+    .stApp p:contains("stocks_universe_categorized"),
+    .stApp p:contains("Total Categories"),
+    .stApp div:contains("Database Generated") {
+        display: none !important;
+        visibility: hidden !important;
+        height: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    
+    /* Ensure main content starts cleanly */
+    .block-container {
+        padding-top: 1rem;
+    }
+    
     /* Main Container Styling */
     .main-header {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -10335,6 +10362,10 @@ def run_industry_screener(industry, strategy_type="undervalued", max_results=50)
         # Calculate upside
         upside = ((fair_value - fundamentals['price']) / fundamentals['price']) * 100
         
+        # Remove outliers: Skip stocks with upside > 500% (likely data errors)
+        if upside > 500:
+            continue
+        
         # Get industry benchmarks for additional filtering
         benchmarks = get_industry_benchmarks(industry, fundamentals.get('cap_type', 'Large'))
         
@@ -10745,6 +10776,9 @@ def create_pdf_report(company, ticker, sector, vals):
 # MAIN APPLICATION
 # ============================================================================
 def main():
+    # Clear any previous output and ensure clean start
+    st.empty()
+    
     # Header
     st.markdown(f'''
     <div class="main-header">
@@ -10800,9 +10834,15 @@ def main():
         
         st.markdown("### 🎯 Industry-Based Stock Screener")
         
-        # Industry selection
+        # Industry selection with stock counts
         industries = sorted(get_all_categories())
-        selected_industry = st.sidebar.selectbox("Select Industry", industries)
+        industry_options = []
+        for industry in industries:
+            stock_count = len(get_stocks_by_category(industry))
+            industry_options.append(f"{industry} ({stock_count} stocks)")
+        
+        selected_industry_with_count = st.sidebar.selectbox("Select Industry", industry_options)
+        selected_industry = selected_industry_with_count.split(" (")[0]  # Extract industry name
         
         # Strategy selection  
         strategy_options = [
@@ -10939,8 +10979,12 @@ def main():
             selected_ticker = st.sidebar.text_input("Enter Ticker", placeholder="e.g., RELIANCE.NS").upper()
         
         elif input_method == "📋 Browse by Industry":
-            browse_industry = st.sidebar.selectbox("Select Industry", [""] + sorted(get_all_categories()))
-            if browse_industry:
+            browse_industries = sorted(get_all_categories())
+            browse_industry_options = [""] + [f"{industry} ({len(get_stocks_by_category(industry))} stocks)" for industry in browse_industries]
+            selected_browse_industry_with_count = st.sidebar.selectbox("Select Industry", browse_industry_options)
+            
+            if selected_browse_industry_with_count:
+                browse_industry = selected_browse_industry_with_count.split(" (")[0]  # Extract industry name
                 industry_stocks = get_stocks_by_category(browse_industry)
                 stock_options = [f"{ticker} - {name}" for ticker, name in industry_stocks.items()]
                 selected_stock = st.sidebar.selectbox("Select Stock", [""] + sorted(stock_options))
@@ -10961,6 +11005,27 @@ def main():
             if not vals:
                 st.error("❌ Unable to calculate valuations for this stock")
                 st.stop()
+            
+            # Data Quality Validation
+            data_quality_issues = []
+            if not vals.get('trailing_pe') or vals['trailing_pe'] <= 0:
+                data_quality_issues.append("PE Ratio unavailable or negative")
+            if not vals.get('trailing_eps') or vals['trailing_eps'] <= 0:
+                data_quality_issues.append("EPS unavailable or negative")
+            if not vals.get('fair_value_pe') and not vals.get('fair_value_ev'):
+                data_quality_issues.append("No fair value calculation possible")
+            
+            # Show data quality alert if issues found
+            if data_quality_issues:
+                st.warning(f"""
+                ⚠️ **Data Quality Alert**: Unaudited data suspected and thus limited valuation possible
+                
+                **Issues detected:**
+                - {chr(10).join(['• ' + issue for issue in data_quality_issues])}
+                
+                **Recommendation**: Verify financial data from official sources before making investment decisions.
+                """)
+
             
             # Extract company info
             company = info.get('longName', selected_ticker)
@@ -11244,9 +11309,13 @@ def main():
         st.markdown("---")
         st.markdown("#### 🔍 Explore Industry Details")
         
-        explore_industry = st.selectbox("Select Industry", sorted(get_all_categories()))
+        # Create industry options with stock counts
+        explore_industries = sorted(get_all_categories())
+        explore_industry_options = [""] + [f"{industry} ({len(get_stocks_by_category(industry))} stocks)" for industry in explore_industries]
+        selected_explore_industry_with_count = st.selectbox("Select Industry", explore_industry_options)
         
-        if explore_industry:
+        if selected_explore_industry_with_count:
+            explore_industry = selected_explore_industry_with_count.split(" (")[0]  # Extract industry name
             industry_stocks = get_stocks_by_category(explore_industry)
             sector = get_sector_for_industry(explore_industry)
             
