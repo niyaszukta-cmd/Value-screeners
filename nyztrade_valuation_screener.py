@@ -10725,20 +10725,7 @@ st.markdown(f'''
 </div>
 ''', unsafe_allow_html=True)
 
-# Display sector breakdown with stock counts
-st.markdown("**🏢 Industry Selection Coverage - Step 1:**")
-sector_breakdown = []
-for sector, categories in SECTOR_MAPPING.items():
-    stock_count = sum(len(INDIAN_STOCKS.get(cat, {})) for cat in categories)
-    sector_breakdown.append((sector, stock_count))
 
-sector_breakdown.sort(key=lambda x: x[1], reverse=True)
-
-col1, col2 = st.columns(2)
-for i, (sector, count) in enumerate(sector_breakdown):
-    col = col1 if i % 2 == 0 else col2
-    with col:
-        st.markdown(f"• **{sector}**: {count:,} stocks → Select for targeted screening")
 
 # ============================================================================
 # SIDEBAR CONTROLS
