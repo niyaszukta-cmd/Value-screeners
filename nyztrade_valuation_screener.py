@@ -49,7 +49,9 @@ INDIAN_STOCKS = {
         "BHARATFORG.NS": "Bharat Forge Limited",
         "BALKRISIND.NS": "Balkrishna Industries Limited",
         "APOLLOTYRE.NS": "Apollo Tyres Limited",
-        "MRF.NS": "MRF Limited"
+        "MRF.NS": "MRF Limited",
+        "CEATLTD.NS": "CEAT Limited",
+        "JK-TYRE.NS": "JK Tyre & Industries Limited"
     },
 
     "Cement & Aggregates": {
@@ -73,7 +75,9 @@ INDIAN_STOCKS = {
         "DEEPAKNTR.NS": "Deepak Nitrite Limited",
         "SRF.NS": "SRF Limited",
         "TATACHEM.NS": "Tata Chemicals Limited",
-        "NAVINFLUOR.NS": "Navin Fluorine International Limited"
+        "NAVINFLUOR.NS": "Navin Fluorine International Limited",
+        "NOCIL.NS": "NOCIL Limited",
+        "ROSSARI.NS": "Rossari Biotech Limited"
     },
 
     "Credit Services": {
@@ -97,6 +101,18 @@ INDIAN_STOCKS = {
         "GLENMARK.NS": "Glenmark Pharmaceuticals Limited",
         "CADILAHC.NS": "Cadila Healthcare Limited",
         "AJANTPHARM.NS": "Ajanta Pharma Limited"
+    },
+
+    "Drug Manufacturers - Other": {
+        "ABBOTINDIA.NS": "Abbott India Limited",
+        "PFIZER.NS": "Pfizer Limited",
+        "GSK.NS": "GlaxoSmithKline Pharmaceuticals Limited",
+        "SANOFI.NS": "Sanofi India Limited"
+    },
+
+    "Drugs - Generic": {
+        "IPCALAB.NS": "IPCA Laboratories Limited",
+        "JBCHEPHARM.NS": "JB Chemicals & Pharmaceuticals Limited"
     },
 
     "Diversified Electronics": {
@@ -304,7 +320,7 @@ TOTAL_CATEGORIES = len(INDIAN_STOCKS)
 # ============================================================================
 
 st.set_page_config(
-    page_title="NYZTrade - Industry-Based Stock Screener", 
+    page_title="NYZTrade - Industry Stock Screener", 
     page_icon="🎯", 
     layout="wide",
     initial_sidebar_state="expanded"
@@ -341,14 +357,6 @@ st.markdown("""
         box-shadow: 0 5px 15px rgba(0,0,0,0.1);
     }
     
-    .industry-card {
-        background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(129, 140, 248, 0.1));
-        border: 1px solid rgba(99, 102, 241, 0.2);
-        border-radius: 12px;
-        padding: 1rem;
-        margin: 1rem 0;
-    }
-    
     .highlight-box {
         background: linear-gradient(135deg, rgba(34, 197, 94, 0.1), rgba(59, 130, 246, 0.1));
         border: 2px solid rgba(34, 197, 94, 0.3);
@@ -376,77 +384,31 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ============================================================================
-# INDUSTRY CATEGORIZATION AND MAPPING
+# SECTOR GROUPING AND BENCHMARKS
 # ============================================================================
 
-def get_industry_stock_count():
-    """Get count of stocks in each industry"""
-    return {industry: len(stocks) for industry, stocks in INDIAN_STOCKS.items()}
-
-def get_top_industries(top_n=20):
-    """Get top N industries by stock count"""
-    counts = get_industry_stock_count()
-    return dict(sorted(counts.items(), key=lambda x: x[1], reverse=True)[:top_n])
-
-def search_stocks_by_name(query, max_results=50):
-    """Search stocks by company name across all industries"""
-    results = []
-    query_lower = query.lower()
-    
-    for industry, stocks in INDIAN_STOCKS.items():
-        for ticker, name in stocks.items():
-            if query_lower in name.lower() or query_lower in ticker.lower():
-                results.append({
-                    'ticker': ticker,
-                    'name': name,
-                    'industry': industry
-                })
-                if len(results) >= max_results:
-                    break
-        if len(results) >= max_results:
-            break
-    
-    return results
-
-# Sector grouping for broader analysis
 INDUSTRY_TO_SECTOR = {
     # Financial Services
-    "Asset Management": "Financial Services",
-    "Banks - Regional": "Financial Services",
     "Credit Services": "Financial Services", 
     "Financial Services": "Financial Services",
     "Insurance - Life": "Financial Services",
     "Insurance - Property & Casualty": "Financial Services",
-    "Investment Brokerage - National": "Financial Services",
     "Money Center Banks": "Financial Services",
-    "Mortgage Investment": "Financial Services",
     
     # Technology
-    "Business Software & Services": "Technology",
-    "Communication Technology": "Technology",
-    "Computer Processing Hardware": "Technology",
     "Information Technology Services": "Technology",
-    "Technical & System Software": "Technology",
     "Wireless Communications": "Technology",
     
     # Healthcare & Pharma
-    "Biotechnology": "Healthcare & Pharma",
     "Drug Manufacturers - Major": "Healthcare & Pharma",
-    "Drug Manufacturers - Other": "Healthcare & Pharma", 
+    "Drug Manufacturers - Other": "Healthcare & Pharma",
     "Drugs - Generic": "Healthcare & Pharma",
     "Medical Services": "Healthcare & Pharma",
-    "Medical Laboratories & Research": "Healthcare & Pharma",
     
     # Industrial & Manufacturing
-    "Aerospace/Defense - Major Diversified": "Industrial & Manufacturing",
-    "Aluminum": "Industrial & Manufacturing",
     "Diversified Electronics": "Industrial & Manufacturing",
     "Diversified Machinery": "Industrial & Manufacturing",
-    "Farm & Construction Machinery": "Industrial & Manufacturing",
-    "Heavy Construction": "Industrial & Manufacturing",
-    "Industrial Products": "Industrial & Manufacturing",
     "Steel & Iron": "Industrial & Manufacturing",
-    "Tools & Hardware": "Industrial & Manufacturing",
     
     # Energy & Utilities
     "Electric Utilities": "Energy & Utilities",
@@ -456,68 +418,40 @@ INDUSTRY_TO_SECTOR = {
     "Renewable Energy": "Energy & Utilities",
     
     # Consumer & Retail
-    "Apparel Stores": "Consumer & Retail",
     "Auto Manufacturers - Major": "Consumer & Retail",
-    "Auto Parts": "Consumer & Retail", 
+    "Auto Parts": "Consumer & Retail",
     "Food - Major Diversified": "Consumer & Retail",
     "Jewelry Stores": "Consumer & Retail",
-    "Lodging": "Consumer & Retail",
-    "Personal Products": "Consumer & Retail",
-    "Restaurants": "Consumer & Retail",
     "Retail - Apparel & Accessories": "Consumer & Retail",
-    "Tobacco Products, Other": "Consumer & Retail",
     
     # Materials & Chemicals
     "Agricultural Chemicals": "Materials & Chemicals",
     "Cement & Aggregates": "Materials & Chemicals",
     "Chemicals - Major Diversified": "Materials & Chemicals",
-    "Paper & Paper Products": "Materials & Chemicals",
-    "Rubber & Plastics": "Materials & Chemicals",
-    
-    # Transportation
-    "Air Delivery & Freight Services": "Transportation",
-    "Air Services, Other": "Transportation",
-    "Major Airlines": "Transportation",
-    "Shipping": "Transportation",
-    "Transportation Services": "Transportation",
-    "Trucking": "Transportation",
     
     # Real Estate & Construction
-    "General Contractors": "Real Estate & Construction",
     "Real Estate Development": "Real Estate & Construction",
     
     # Textiles
-    "Textile Industrial": "Textiles",
-    "Textile - Apparel Clothing": "Textiles"
+    "Textile Industrial": "Textiles"
 }
 
 def get_sector_for_industry(industry):
     """Get broad sector for a given industry"""
     return INDUSTRY_TO_SECTOR.get(industry, "Other")
 
-def get_industries_by_sector():
-    """Group industries by sector"""
-    sectors = {}
-    for industry in get_all_categories():
-        sector = get_sector_for_industry(industry)
-        if sector not in sectors:
-            sectors[sector] = []
-        sectors[sector].append(industry)
-    return sectors
-
 # Default benchmarks by sector
 SECTOR_BENCHMARKS = {
-    'Financial Services': {'pe': 18.0, 'ev_ebitda': 12.0, 'pb': 1.5, 'roe': 15.0},
-    'Technology': {'pe': 25.0, 'ev_ebitda': 15.0, 'pb': 3.5, 'roe': 20.0},
-    'Healthcare & Pharma': {'pe': 28.0, 'ev_ebitda': 14.0, 'pb': 3.0, 'roe': 18.0},
-    'Industrial & Manufacturing': {'pe': 22.0, 'ev_ebitda': 12.0, 'pb': 2.0, 'roe': 14.0},
-    'Energy & Utilities': {'pe': 15.0, 'ev_ebitda': 8.0, 'pb': 1.2, 'roe': 12.0},
-    'Consumer & Retail': {'pe': 30.0, 'ev_ebitda': 14.0, 'pb': 2.5, 'roe': 16.0},
-    'Materials & Chemicals': {'pe': 18.0, 'ev_ebitda': 10.0, 'pb': 1.8, 'roe': 13.0},
-    'Real Estate & Construction': {'pe': 25.0, 'ev_ebitda': 18.0, 'pb': 1.5, 'roe': 12.0},
-    'Transportation': {'pe': 20.0, 'ev_ebitda': 12.0, 'pb': 1.8, 'roe': 14.0},
-    'Textiles': {'pe': 20.0, 'ev_ebitda': 12.0, 'pb': 1.5, 'roe': 15.0},
-    'Other': {'pe': 20.0, 'ev_ebitda': 12.0, 'pb': 2.0, 'roe': 15.0}
+    'Financial Services': {'pe': 18.0, 'pb': 1.5, 'roe': 15.0},
+    'Technology': {'pe': 25.0, 'pb': 3.5, 'roe': 20.0},
+    'Healthcare & Pharma': {'pe': 28.0, 'pb': 3.0, 'roe': 18.0},
+    'Industrial & Manufacturing': {'pe': 22.0, 'pb': 2.0, 'roe': 14.0},
+    'Energy & Utilities': {'pe': 15.0, 'pb': 1.2, 'roe': 12.0},
+    'Consumer & Retail': {'pe': 30.0, 'pb': 2.5, 'roe': 16.0},
+    'Materials & Chemicals': {'pe': 18.0, 'pb': 1.8, 'roe': 13.0},
+    'Real Estate & Construction': {'pe': 25.0, 'pb': 1.5, 'roe': 12.0},
+    'Textiles': {'pe': 20.0, 'pb': 1.5, 'roe': 15.0},
+    'Other': {'pe': 20.0, 'pb': 2.0, 'roe': 15.0}
 }
 
 # ============================================================================
@@ -531,9 +465,8 @@ def fetch_stock_data(ticker, max_retries=2):
         try:
             stock = yf.Ticker(ticker)
             info = stock.info
-            hist = stock.history(period="1y")
             
-            if not info or hist.empty:
+            if not info:
                 continue
                 
             return info, None
@@ -560,21 +493,15 @@ def get_stock_fundamentals(ticker):
             'price': info.get('currentPrice', info.get('regularMarketPrice')),
             'market_cap': info.get('marketCap'),
             'trailing_pe': info.get('trailingPE'),
-            'forward_pe': info.get('forwardPE'),
             'pb_ratio': info.get('priceToBook'),
-            'ps_ratio': info.get('priceToSalesTrailing12Months'),
-            'ev_ebitda': info.get('enterpriseToEbitda'),
             'roe': info.get('returnOnEquity'),
-            'roa': info.get('returnOnAssets'),
             'dividend_yield': info.get('dividendYield'),
             'beta': info.get('beta'),
             'profit_margin': info.get('profitMargins'),
-            'book_value': info.get('bookValue'),
             'debt_to_equity': info.get('debtToEquity'),
             '52w_high': info.get('fiftyTwoWeekHigh'),
             '52w_low': info.get('fiftyTwoWeekLow'),
-            'volume': info.get('volume'),
-            'avg_volume': info.get('averageVolume'),
+            'volume': info.get('volume')
         }
         
         # Calculate additional metrics
@@ -601,25 +528,188 @@ def get_stock_fundamentals(ticker):
         return None
 
 # ============================================================================
-# SIMPLE VALUATION LOGIC
+# VALUATION AND SCREENING LOGIC
 # ============================================================================
 
-def calculate_simple_fair_value(fundamentals, sector_benchmarks):
-    """Calculate a simple fair value estimate"""
-    if not fundamentals or not fundamentals.get('trailing_pe'):
+def calculate_fair_value(fundamentals, benchmarks):
+    """Simple fair value calculation using industry PE"""
+    if not fundamentals or not benchmarks or not fundamentals.get('trailing_pe'):
         return None
     
-    # Simple PE-based fair value
-    sector_pe = sector_benchmarks.get('pe', 20)
-    current_pe = fundamentals['trailing_pe']
-    
-    if current_pe and current_pe > 0:
-        # If PE is reasonable, calculate fair value
-        fair_pe_ratio = sector_pe / current_pe
-        fair_value = fundamentals['price'] * fair_pe_ratio
-        return fair_value
+    try:
+        # Simple PE-based valuation
+        current_pe = fundamentals['trailing_pe']
+        sector_pe = benchmarks['pe']
+        
+        if current_pe > 0:
+            # Calculate fair value based on sector PE
+            fair_value = fundamentals['price'] * (sector_pe / current_pe)
+            return fair_value if fair_value > 0 else None
+    except:
+        return None
     
     return None
+
+def run_industry_screener(industry, strategy_type="undervalued", max_results=50):
+    """Run screening for a specific industry"""
+    
+    stocks = get_stocks_by_category(industry)
+    if not stocks:
+        return pd.DataFrame()
+    
+    # Get sector benchmarks for industry
+    sector = get_sector_for_industry(industry)
+    benchmarks = SECTOR_BENCHMARKS.get(sector, SECTOR_BENCHMARKS['Other'])
+    
+    results = []
+    
+    # Progress tracking
+    progress_bar = st.progress(0)
+    status_text = st.empty()
+    total_stocks = len(stocks)
+    
+    for i, (ticker, name) in enumerate(stocks.items()):
+        # Update progress
+        progress = (i + 1) / total_stocks
+        progress_bar.progress(progress)
+        status_text.text(f"Processing {ticker} ({i + 1}/{total_stocks})")
+        
+        # Get fundamentals
+        fundamentals = get_stock_fundamentals(ticker)
+        if not fundamentals or not fundamentals['price']:
+            continue
+        
+        # Calculate fair value
+        fair_value = calculate_fair_value(fundamentals, benchmarks)
+        if not fair_value or fair_value <= 0:
+            continue
+        
+        # Calculate upside
+        upside = ((fair_value - fundamentals['price']) / fundamentals['price']) * 100
+        
+        # Apply strategy filters
+        passes_filter = False
+        
+        if strategy_type == "undervalued":
+            if upside >= 15:  # At least 15% upside
+                passes_filter = True
+        
+        elif strategy_type == "undervalued_supertrend":
+            if upside >= 15:
+                # Use 52-week position as proxy for technical strength
+                if fundamentals.get('pct_from_high') and fundamentals['pct_from_high'] >= -25:
+                    passes_filter = True
+        
+        elif strategy_type == "undervalued_rsi_macd":
+            if upside >= 15:
+                # Use 52-week position as proxy for not overbought
+                if fundamentals.get('pct_from_high') and fundamentals['pct_from_high'] >= -30:
+                    passes_filter = True
+        
+        elif strategy_type == "momentum":
+            # Momentum: stocks near 52W high
+            if (fundamentals.get('pct_from_high') and fundamentals['pct_from_high'] >= -10 and
+                fundamentals.get('trailing_pe') and fundamentals['trailing_pe'] <= benchmarks['pe'] * 1.5):
+                passes_filter = True
+        
+        elif strategy_type == "quality":
+            # Quality: good ROE, reasonable PE, positive upside
+            if (fundamentals.get('roe') and fundamentals['roe'] > benchmarks['roe'] / 100 and
+                fundamentals.get('trailing_pe') and fundamentals['trailing_pe'] <= benchmarks['pe'] * 1.2 and
+                upside >= 5):
+                passes_filter = True
+        
+        if not passes_filter:
+            continue
+        
+        # Add to results
+        result = {
+            'Ticker': ticker,
+            'Name': name,
+            'Industry': industry,
+            'Price': fundamentals['price'],
+            'Fair Value': fair_value,
+            'Upside %': upside,
+            'PE Ratio': fundamentals['trailing_pe'],
+            'PB Ratio': fundamentals['pb_ratio'],
+            'ROE %': fundamentals['roe'] * 100 if fundamentals['roe'] else None,
+            'Market Cap': fundamentals['market_cap'],
+            'Cap Type': fundamentals['cap_type'],
+            'From 52W High %': fundamentals['pct_from_high'],
+            'From 52W Low %': fundamentals['pct_from_low'],
+            'Beta': fundamentals['beta'],
+            'Dividend Yield %': fundamentals['dividend_yield'] * 100 if fundamentals['dividend_yield'] else None
+        }
+        results.append(result)
+        
+        if len(results) >= max_results:
+            break
+    
+    # Clear progress indicators
+    progress_bar.empty()
+    status_text.empty()
+    
+    return pd.DataFrame(results)
+
+def search_stocks_by_name(query, max_results=50):
+    """Search stocks by company name across all industries"""
+    results = []
+    query_lower = query.lower()
+    
+    for industry, stocks in INDIAN_STOCKS.items():
+        for ticker, name in stocks.items():
+            if query_lower in name.lower() or query_lower in ticker.lower():
+                results.append({
+                    'ticker': ticker,
+                    'name': name,
+                    'industry': industry
+                })
+                if len(results) >= max_results:
+                    break
+        if len(results) >= max_results:
+            break
+    
+    return results
+
+# ============================================================================
+# INDIVIDUAL STOCK ANALYSIS
+# ============================================================================
+
+def analyze_individual_stock(ticker):
+    """Analyze individual stock with industry benchmarks"""
+    
+    # Get stock info
+    stock_info = get_stock_info(ticker)
+    if not stock_info:
+        return None, "Stock not found in database"
+    
+    # Get fundamentals
+    fundamentals = get_stock_fundamentals(ticker)
+    if not fundamentals:
+        return None, "Unable to fetch stock data"
+    
+    # Get sector benchmarks
+    industry = stock_info['category']
+    sector = get_sector_for_industry(industry)
+    benchmarks = SECTOR_BENCHMARKS.get(sector, SECTOR_BENCHMARKS['Other'])
+    
+    # Calculate fair value
+    fair_value = calculate_fair_value(fundamentals, benchmarks)
+    upside = ((fair_value - fundamentals['price']) / fundamentals['price']) * 100 if fair_value else 0
+    
+    analysis = {
+        'ticker': ticker,
+        'company': fundamentals['name'],
+        'industry': industry,
+        'sector': sector,
+        'price': fundamentals['price'],
+        'fair_value': fair_value,
+        'upside': upside,
+        'fundamentals': fundamentals,
+        'benchmarks': benchmarks
+    }
+    
+    return analysis, None
 
 # ============================================================================
 # MAIN STREAMLIT APPLICATION
@@ -631,8 +721,8 @@ def main():
     st.markdown(f'''
     <div class="main-header">
         <h1>🎯 NYZTrade - Industry Stock Screener</h1>
-        <h3>Professional Stock Analysis Across {TOTAL_CATEGORIES} Indian Industries</h3>
-        <p>Industry-Specific Analysis • {TOTAL_STOCKS:,} Stock Universe</p>
+        <h3>Professional Stock Screening Across {TOTAL_CATEGORIES} Indian Industries</h3>
+        <p>Real Industry Benchmarks • {TOTAL_STOCKS:,} Stock Universe</p>
     </div>
     ''', unsafe_allow_html=True)
     
@@ -648,12 +738,12 @@ def main():
             <p>Stocks</p>
         </div>
         <div class="stat-card">
-            <h3>Live</h3>
-            <p>Data</p>
+            <h3>5</h3>
+            <p>Strategies</p>
         </div>
         <div class="stat-card">
-            <h3>Real-Time</h3>
-            <p>Analysis</p>
+            <h3>Live</h3>
+            <p>Data</p>
         </div>
     </div>
     ''', unsafe_allow_html=True)
@@ -663,16 +753,313 @@ def main():
     
     # Mode selection
     mode = st.sidebar.selectbox(
-        "Analysis Mode",
-        ["🎯 Industry Explorer", "📈 Stock Analysis", "📊 Quick Search"]
+        "Choose Mode",
+        ["🎯 Stock Screener", "📈 Individual Analysis", "📊 Industry Explorer"]
     )
     
-    if mode == "🎯 Industry Explorer":
+    if mode == "🎯 Stock Screener":
         
-        st.markdown("### 🔍 Industry Explorer")
+        st.markdown("### 🎯 Industry-Based Stock Screener")
         
-        # Show top industries by stock count
-        top_industries = get_top_industries(15)
+        # Industry selection
+        industries = sorted(get_all_categories())
+        selected_industry = st.sidebar.selectbox("Select Industry", industries)
+        
+        # Strategy selection  
+        strategy_options = [
+            ("undervalued", "🎯 Undervalued Stocks (15%+ upside)"),
+            ("undervalued_supertrend", "📈 Undervalued + Strong Position"),
+            ("undervalued_rsi_macd", "🔍 Undervalued + Momentum"),
+            ("momentum", "🚀 Momentum Stocks"),
+            ("quality", "💎 Quality Stocks")
+        ]
+        
+        strategy_choice = st.sidebar.selectbox(
+            "Screening Strategy",
+            strategy_options,
+            format_func=lambda x: x[1]
+        )
+        
+        strategy_type = strategy_choice[0]
+        strategy_name = strategy_choice[1]
+        
+        # Parameters
+        max_results = st.sidebar.slider("Max Results", 10, 100, 30)
+        
+        # Run screener
+        if st.sidebar.button("🚀 Run Screener", type="primary"):
+            
+            # Show industry info
+            industry_stocks = get_stocks_by_category(selected_industry)
+            sector = get_sector_for_industry(selected_industry)
+            
+            st.markdown(f'''
+            <div class="highlight-box">
+                <h3>📊 {strategy_name}</h3>
+                <p><strong>Industry:</strong> {selected_industry}</p>
+                <p><strong>Sector:</strong> {sector}</p>
+                <p><strong>Universe:</strong> {len(industry_stocks):,} stocks</p>
+            </div>
+            ''', unsafe_allow_html=True)
+            
+            # Run screener
+            with st.spinner(f"🔍 Screening {len(industry_stocks):,} stocks..."):
+                results_df = run_industry_screener(selected_industry, strategy_type, max_results)
+            
+            if results_df.empty:
+                st.warning(f"❌ No stocks found matching {strategy_name} criteria in {selected_industry}")
+            else:
+                # Display results
+                st.markdown(f'''
+                <div class="success-message">
+                    ✅ Found <strong>{len(results_df)}</strong> opportunities in {selected_industry}<br>
+                    🎯 Strategy: {strategy_name}
+                </div>
+                ''', unsafe_allow_html=True)
+                
+                # Sort results by upside
+                results_df = results_df.sort_values('Upside %', ascending=False)
+                
+                # Format display
+                display_df = results_df.copy()
+                
+                # Format currency columns
+                for col in ['Price', 'Fair Value']:
+                    if col in display_df.columns:
+                        display_df[col] = display_df[col].apply(lambda x: f"₹{x:,.2f}" if pd.notna(x) else 'N/A')
+                
+                # Format percentage columns
+                for col in ['Upside %', 'ROE %', 'From 52W High %', 'From 52W Low %', 'Dividend Yield %']:
+                    if col in display_df.columns:
+                        display_df[col] = display_df[col].apply(lambda x: f"{x:+.1f}%" if pd.notna(x) else 'N/A')
+                
+                # Format ratio columns
+                for col in ['PE Ratio', 'PB Ratio', 'Beta']:
+                    if col in display_df.columns:
+                        display_df[col] = display_df[col].apply(lambda x: f"{x:.2f}" if pd.notna(x) else 'N/A')
+                
+                # Format market cap
+                if 'Market Cap' in display_df.columns:
+                    display_df['Market Cap'] = display_df['Market Cap'].apply(
+                        lambda x: f"₹{x/10000000:,.0f}Cr" if pd.notna(x) else 'N/A'
+                    )
+                
+                # Select key columns for display
+                display_columns = ['Ticker', 'Name', 'Price', 'Fair Value', 'Upside %', 'PE Ratio', 'From 52W High %', 'Cap Type']
+                
+                # Display table
+                st.dataframe(
+                    display_df[display_columns],
+                    use_container_width=True,
+                    hide_index=True,
+                    height=min(600, len(display_df) * 35 + 100)
+                )
+                
+                # Download CSV
+                csv = results_df.to_csv(index=False)
+                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                filename = f"NYZTrade_{selected_industry.replace(' ', '_')}_{strategy_type}_{timestamp}.csv"
+                
+                st.download_button(
+                    f"📥 Download Results ({len(results_df)} stocks)",
+                    data=csv,
+                    file_name=filename,
+                    mime="text/csv",
+                    use_container_width=True
+                )
+    
+    elif mode == "📈 Individual Analysis":
+        
+        st.markdown("### 📈 Individual Stock Analysis")
+        
+        # Stock selection methods
+        st.sidebar.subheader("Stock Selection")
+        
+        input_method = st.sidebar.radio(
+            "Input Method",
+            ["🔍 Search by Name", "✏️ Direct Ticker", "📋 Browse by Industry"]
+        )
+        
+        selected_ticker = None
+        
+        if input_method == "🔍 Search by Name":
+            search_query = st.sidebar.text_input("Search Company", placeholder="e.g., Reliance, TCS, HDFC")
+            
+            if search_query and len(search_query) >= 2:
+                search_results = search_stocks_by_name(search_query, 15)
+                if search_results:
+                    options = [f"{r['ticker']} - {r['name']}" for r in search_results]
+                    selected = st.sidebar.selectbox("Select Stock", [""] + options)
+                    if selected:
+                        selected_ticker = selected.split(" - ")[0]
+                else:
+                    st.sidebar.info("No stocks found")
+        
+        elif input_method == "✏️ Direct Ticker":
+            selected_ticker = st.sidebar.text_input("Enter Ticker", placeholder="e.g., RELIANCE.NS").upper()
+        
+        elif input_method == "📋 Browse by Industry":
+            browse_industry = st.sidebar.selectbox("Select Industry", [""] + sorted(get_all_categories()))
+            if browse_industry:
+                industry_stocks = get_stocks_by_category(browse_industry)
+                stock_options = [f"{ticker} - {name}" for ticker, name in industry_stocks.items()]
+                selected_stock = st.sidebar.selectbox("Select Stock", [""] + sorted(stock_options))
+                if selected_stock:
+                    selected_ticker = selected_stock.split(" - ")[0]
+        
+        # Analyze button
+        if selected_ticker and st.sidebar.button("🚀 Analyze", type="primary"):
+            
+            with st.spinner(f"Analyzing {selected_ticker}..."):
+                analysis, error = analyze_individual_stock(selected_ticker)
+            
+            if error:
+                st.error(f"❌ {error}")
+            elif analysis:
+                # Display analysis
+                st.markdown(f"# {analysis['company']}")
+                st.markdown(f"**{analysis['ticker']} • {analysis['industry']} • {analysis['sector']}**")
+                
+                # Key metrics
+                col1, col2, col3, col4 = st.columns(4)
+                
+                with col1:
+                    st.metric("Current Price", f"₹{analysis['price']:,.2f}")
+                
+                with col2:
+                    if analysis['fair_value']:
+                        upside_delta = f"{analysis['upside']:+.1f}%"
+                        delta_color = "normal" if analysis['upside'] > 0 else "inverse"
+                        st.metric(
+                            "Fair Value",
+                            f"₹{analysis['fair_value']:,.2f}",
+                            delta=upside_delta,
+                            delta_color=delta_color
+                        )
+                    else:
+                        st.metric("Fair Value", "N/A")
+                
+                with col3:
+                    # Recommendation based on upside
+                    if analysis['upside'] > 25:
+                        rec = "🚀 Strong Buy"
+                    elif analysis['upside'] > 15:
+                        rec = "✅ Buy"
+                    elif analysis['upside'] > 0:
+                        rec = "📊 Hold"
+                    else:
+                        rec = "⚠️ Avoid"
+                    st.metric("Recommendation", rec)
+                
+                with col4:
+                    # 52-week position
+                    if analysis['fundamentals']['pct_from_high'] is not None:
+                        range_pos = 100 + analysis['fundamentals']['pct_from_high']
+                        pos_emoji = "🟢" if range_pos > 80 else "🟡" if range_pos > 60 else "🟠" if range_pos > 40 else "🔴"
+                        st.metric("52W Position", f"{pos_emoji} {range_pos:.0f}%")
+                    else:
+                        st.metric("52W Position", "N/A")
+                
+                st.markdown("---")
+                
+                # Detailed metrics in tabs
+                tab1, tab2, tab3 = st.tabs(["📊 Fundamentals", "📈 Performance", "💼 Details"])
+                
+                with tab1:
+                    col1, col2, col3 = st.columns(3)
+                    
+                    fund = analysis['fundamentals']
+                    bench = analysis['benchmarks']
+                    
+                    with col1:
+                        pe = fund['trailing_pe']
+                        if pe:
+                            pe_vs_sector = pe - bench['pe']
+                            st.metric(
+                                "PE Ratio",
+                                f"{pe:.2f}x",
+                                delta=f"{pe_vs_sector:+.1f}x vs sector",
+                                delta_color="inverse" if pe_vs_sector > 0 else "normal"
+                            )
+                        else:
+                            st.metric("PE Ratio", "N/A")
+                    
+                    with col2:
+                        pb = fund['pb_ratio']
+                        if pb:
+                            pb_vs_sector = pb - bench['pb']
+                            st.metric(
+                                "PB Ratio",
+                                f"{pb:.2f}x",
+                                delta=f"{pb_vs_sector:+.1f}x vs sector",
+                                delta_color="inverse" if pb_vs_sector > 0 else "normal"
+                            )
+                        else:
+                            st.metric("PB Ratio", "N/A")
+                    
+                    with col3:
+                        roe = fund['roe']
+                        if roe:
+                            roe_pct = roe * 100
+                            roe_vs_sector = roe_pct - bench['roe']
+                            st.metric(
+                                "ROE",
+                                f"{roe_pct:.1f}%",
+                                delta=f"{roe_vs_sector:+.1f}pp vs sector",
+                                delta_color="normal" if roe_vs_sector > 0 else "inverse"
+                            )
+                        else:
+                            st.metric("ROE", "N/A")
+                
+                with tab2:
+                    fund = analysis['fundamentals']
+                    if fund['pct_from_high'] is not None:
+                        col1, col2 = st.columns(2)
+                        
+                        with col1:
+                            st.metric("From 52W High", f"{fund['pct_from_high']:+.1f}%")
+                            st.metric("From 52W Low", f"{fund['pct_from_low']:+.1f}%")
+                        
+                        with col2:
+                            # Visual 52-week position
+                            current_position = ((fund['price'] - fund['52w_low']) / (fund['52w_high'] - fund['52w_low'])) * 100
+                            st.markdown("**52-Week Position**")
+                            st.progress(current_position / 100)
+                            st.caption(f"{current_position:.1f}% of range")
+                            
+                            if current_position > 80:
+                                st.success("🟢 Very Strong")
+                            elif current_position > 60:
+                                st.info("🟡 Strong")
+                            elif current_position > 40:
+                                st.warning("🟠 Moderate")
+                            else:
+                                st.error("🔴 Weak")
+                    else:
+                        st.info("52-week data not available")
+                
+                with tab3:
+                    fund = analysis['fundamentals']
+                    
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        st.metric("Market Cap", f"₹{fund['market_cap']/10000000:,.0f} Cr" if fund['market_cap'] else "N/A")
+                        st.metric("Beta", f"{fund['beta']:.2f}" if fund['beta'] else "N/A")
+                        st.metric("Dividend Yield", f"{fund['dividend_yield']*100:.2f}%" if fund['dividend_yield'] else "N/A")
+                    
+                    with col2:
+                        st.metric("Profit Margin", f"{fund['profit_margin']*100:.1f}%" if fund['profit_margin'] else "N/A")
+                        st.metric("Debt/Equity", f"{fund['debt_to_equity']:.2f}" if fund['debt_to_equity'] else "N/A")
+                        st.metric("Volume", f"{fund['volume']:,}" if fund['volume'] else "N/A")
+    
+    elif mode == "📊 Industry Explorer":
+        
+        st.markdown("### 📊 Industry Explorer")
+        
+        # Show industry statistics
+        industry_counts = {industry: len(stocks) for industry, stocks in INDIAN_STOCKS.items()}
+        top_industries = dict(sorted(industry_counts.items(), key=lambda x: x[1], reverse=True)[:12])
         
         col1, col2 = st.columns([2, 1])
         
@@ -686,8 +1073,7 @@ def main():
                 x='Stock Count', 
                 y='Industry',
                 orientation='h',
-                title="Stock Count by Industry",
-                height=500,
+                height=450,
                 color='Stock Count',
                 color_continuous_scale='viridis'
             )
@@ -695,254 +1081,38 @@ def main():
             st.plotly_chart(fig, use_container_width=True)
         
         with col2:
-            st.markdown("#### Industry Statistics")
+            st.markdown("#### Database Statistics")
             
-            # Show stats
             st.metric("Total Industries", f"{TOTAL_CATEGORIES}")
             st.metric("Total Stocks", f"{TOTAL_STOCKS:,}")
-            st.metric("Avg Stocks/Industry", f"{TOTAL_STOCKS // TOTAL_CATEGORIES}")
+            st.metric("Avg per Industry", f"{TOTAL_STOCKS // TOTAL_CATEGORIES}")
             
-            # Show sector distribution
+            # Sector distribution
+            st.markdown("#### Sector Breakdown")
             sectors_count = {}
             for industry in get_all_categories():
                 sector = get_sector_for_industry(industry)
                 sectors_count[sector] = sectors_count.get(sector, 0) + 1
             
-            st.markdown("#### Sector Distribution")
             for sector, count in sorted(sectors_count.items(), key=lambda x: x[1], reverse=True):
-                st.text(f"{sector}: {count} industries")
+                st.text(f"{sector}: {count}")
         
-        # Industry details
+        # Specific industry exploration
         st.markdown("---")
-        st.markdown("#### 🔍 Explore Specific Industry")
+        st.markdown("#### 🔍 Explore Industry Details")
         
-        selected_explore_industry = st.selectbox("Select Industry to Explore", sorted(get_all_categories()))
+        explore_industry = st.selectbox("Select Industry", sorted(get_all_categories()))
         
-        if selected_explore_industry:
-            industry_stocks = get_stocks_by_category(selected_explore_industry)
-            sector = get_sector_for_industry(selected_explore_industry)
+        if explore_industry:
+            industry_stocks = get_stocks_by_category(explore_industry)
+            sector = get_sector_for_industry(explore_industry)
             
-            st.markdown(f'''
-            <div class="industry-card">
-                <h4>📊 {selected_explore_industry}</h4>
-                <p><strong>Sector:</strong> {sector}</p>
-                <p><strong>Total Stocks:</strong> {len(industry_stocks):,}</p>
-            </div>
-            ''', unsafe_allow_html=True)
+            st.info(f"**{explore_industry}** • Sector: {sector} • {len(industry_stocks)} stocks")
             
-            # Show all stocks in the industry
-            if st.expander(f"📋 All {len(industry_stocks)} Stocks in {selected_explore_industry}"):
-                stocks_df = pd.DataFrame(list(industry_stocks.items()), columns=['Ticker', 'Company Name'])
+            # Show stocks in expandable section
+            if st.expander(f"View all {len(industry_stocks)} stocks"):
+                stocks_df = pd.DataFrame(list(industry_stocks.items()), columns=['Ticker', 'Company'])
                 st.dataframe(stocks_df, use_container_width=True, hide_index=True)
-    
-    elif mode == "📈 Stock Analysis":
-        
-        # Stock selection
-        st.sidebar.subheader("📍 Stock Selection")
-        
-        input_method = st.sidebar.radio(
-            "Input Method",
-            ["🔍 Search by Name", "✏️ Direct Ticker", "📋 Browse by Industry"]
-        )
-        
-        selected_ticker = None
-        
-        if input_method == "🔍 Search by Name":
-            search_query = st.sidebar.text_input("Search Company Name", placeholder="e.g., Reliance, TCS, HDFC")
-            
-            if search_query and len(search_query) >= 2:
-                search_results = search_stocks_by_name(search_query, 20)
-                if search_results:
-                    options = [f"{r['ticker']} - {r['name']}" for r in search_results]
-                    selected = st.sidebar.selectbox("Select Stock", [""] + options)
-                    if selected:
-                        selected_ticker = selected.split(" - ")[0]
-                else:
-                    st.sidebar.info("No stocks found")
-        
-        elif input_method == "✏️ Direct Ticker":
-            selected_ticker = st.sidebar.text_input("Enter Ticker", placeholder="e.g., RELIANCE.NS, TCS.NS").upper()
-        
-        elif input_method == "📋 Browse by Industry":
-            browse_industry = st.sidebar.selectbox("Select Industry", [""] + sorted(get_all_categories()))
-            if browse_industry:
-                industry_stocks = get_stocks_by_category(browse_industry)
-                stock_options = [f"{ticker} - {name}" for ticker, name in industry_stocks.items()]
-                selected_stock = st.sidebar.selectbox("Select Stock", [""] + sorted(stock_options))
-                if selected_stock:
-                    selected_ticker = selected_stock.split(" - ")[0]
-        
-        # Analyze button
-        if selected_ticker and st.sidebar.button("🚀 Analyze Stock", type="primary"):
-            
-            with st.spinner(f"📊 Analyzing {selected_ticker}..."):
-                
-                # Get stock info and fundamentals
-                stock_info = get_stock_info(selected_ticker)
-                if not stock_info:
-                    st.error("❌ Stock not found in database")
-                    return
-                
-                fundamentals = get_stock_fundamentals(selected_ticker)
-                if not fundamentals:
-                    st.error("❌ Unable to fetch stock data")
-                    return
-                
-                # Get sector benchmarks
-                industry = stock_info['category']
-                sector = get_sector_for_industry(industry)
-                sector_benchmarks = SECTOR_BENCHMARKS.get(sector, SECTOR_BENCHMARKS['Other'])
-                
-                # Calculate fair value
-                fair_value = calculate_simple_fair_value(fundamentals, sector_benchmarks)
-                upside = ((fair_value - fundamentals['price']) / fundamentals['price']) * 100 if fair_value else 0
-            
-            # Display analysis
-            st.markdown(f"# {fundamentals['name']}")
-            st.markdown(f"**{selected_ticker} • {industry} • {sector} • {fundamentals['cap_type']} Cap**")
-            
-            # Key metrics
-            col1, col2, col3, col4 = st.columns(4)
-            
-            with col1:
-                st.metric("Current Price", f"₹{fundamentals['price']:,.2f}")
-            
-            with col2:
-                if fair_value:
-                    delta_color = "normal" if upside > 0 else "inverse"
-                    st.metric(
-                        "Est. Fair Value",
-                        f"₹{fair_value:,.2f}",
-                        delta=f"{upside:+.1f}% potential",
-                        delta_color=delta_color
-                    )
-                else:
-                    st.metric("Est. Fair Value", "N/A")
-            
-            with col3:
-                # Simple recommendation
-                if upside > 20:
-                    rec = "🚀 Strong Buy"
-                elif upside > 10:
-                    rec = "✅ Buy"
-                elif upside > 0:
-                    rec = "📊 Hold"
-                else:
-                    rec = "⚠️ Caution"
-                st.metric("Recommendation", rec)
-            
-            with col4:
-                # Position in 52-week range
-                if fundamentals['pct_from_high'] is not None:
-                    range_pos = 100 + fundamentals['pct_from_high']
-                    pos_emoji = "🟢" if range_pos > 75 else "🟡" if range_pos > 50 else "🟠" if range_pos > 25 else "🔴"
-                    st.metric("52W Position", f"{pos_emoji} {range_pos:.0f}%")
-                else:
-                    st.metric("52W Position", "N/A")
-            
-            st.markdown("---")
-            
-            # Detailed metrics in tabs
-            tab1, tab2, tab3 = st.tabs(["📊 Fundamentals", "📈 Performance", "💼 Details"])
-            
-            with tab1:
-                col1, col2, col3 = st.columns(3)
-                
-                with col1:
-                    st.metric("PE Ratio", f"{fundamentals['trailing_pe']:.2f}x" if fundamentals['trailing_pe'] else "N/A")
-                    st.caption(f"Sector Avg: {sector_benchmarks['pe']:.1f}x")
-                
-                with col2:
-                    st.metric("PB Ratio", f"{fundamentals['pb_ratio']:.2f}x" if fundamentals['pb_ratio'] else "N/A")
-                    st.caption(f"Sector Avg: {sector_benchmarks['pb']:.1f}x")
-                
-                with col3:
-                    if fundamentals['roe']:
-                        roe_pct = fundamentals['roe'] * 100
-                        st.metric("ROE", f"{roe_pct:.1f}%")
-                        st.caption(f"Sector Avg: {sector_benchmarks['roe']:.1f}%")
-                    else:
-                        st.metric("ROE", "N/A")
-            
-            with tab2:
-                if fundamentals['pct_from_high'] is not None:
-                    col1, col2 = st.columns(2)
-                    
-                    with col1:
-                        st.metric("From 52W High", f"{fundamentals['pct_from_high']:+.1f}%")
-                        st.metric("From 52W Low", f"{fundamentals['pct_from_low']:+.1f}%")
-                    
-                    with col2:
-                        # Progress bar for 52W position
-                        current_position = ((fundamentals['price'] - fundamentals['52w_low']) / (fundamentals['52w_high'] - fundamentals['52w_low'])) * 100
-                        st.markdown("**52-Week Range Position**")
-                        st.progress(current_position / 100)
-                        st.caption(f"Position: {current_position:.1f}%")
-                        
-                        if current_position > 80:
-                            st.success("🟢 Near High")
-                        elif current_position > 60:
-                            st.info("🟡 Upper Range")
-                        elif current_position > 40:
-                            st.info("🟡 Mid Range")
-                        else:
-                            st.warning("🟠 Lower Range")
-                else:
-                    st.info("52-week data not available")
-            
-            with tab3:
-                col1, col2 = st.columns(2)
-                
-                with col1:
-                    st.metric("Market Cap", f"₹{fundamentals['market_cap']/10000000:,.0f} Cr" if fundamentals['market_cap'] else "N/A")
-                    st.metric("Beta", f"{fundamentals['beta']:.2f}" if fundamentals['beta'] else "N/A")
-                
-                with col2:
-                    st.metric("Dividend Yield", f"{fundamentals['dividend_yield']*100:.2f}%" if fundamentals['dividend_yield'] else "N/A")
-                    st.metric("Profit Margin", f"{fundamentals['profit_margin']*100:.1f}%" if fundamentals['profit_margin'] else "N/A")
-    
-    elif mode == "📊 Quick Search":
-        
-        st.markdown("### 🔍 Quick Stock Search")
-        
-        search_query = st.text_input("Search for stocks by name or ticker", placeholder="e.g., Reliance, TCS, HDFC, INFY")
-        
-        if search_query and len(search_query) >= 2:
-            results = search_stocks_by_name(search_query, 30)
-            
-            if results:
-                st.markdown(f"**Found {len(results)} stocks matching '{search_query}'**")
-                
-                # Create DataFrame
-                results_df = pd.DataFrame(results)
-                results_df['Sector'] = results_df['industry'].apply(get_sector_for_industry)
-                
-                # Display results
-                st.dataframe(
-                    results_df[['ticker', 'name', 'industry', 'Sector']].rename(columns={
-                        'ticker': 'Ticker',
-                        'name': 'Company Name',
-                        'industry': 'Industry'
-                    }),
-                    use_container_width=True,
-                    hide_index=True,
-                    height=400
-                )
-                
-                # Show sector distribution
-                sector_counts = results_df['Sector'].value_counts()
-                if len(sector_counts) > 1:
-                    st.markdown("#### Sector Distribution in Results")
-                    
-                    fig = px.pie(
-                        values=sector_counts.values,
-                        names=sector_counts.index,
-                        title=f"Sector Distribution for '{search_query}'"
-                    )
-                    st.plotly_chart(fig, use_container_width=True)
-                    
-            else:
-                st.info(f"No stocks found matching '{search_query}'. Try a different search term.")
 
 if __name__ == "__main__":
     main()
