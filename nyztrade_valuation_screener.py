@@ -923,80 +923,55 @@ def calculate_fair_value_and_upside(info, sector, dynamic_benchmarks=None):
 # ============================================================================
 # SECTOR-BASED SCREENERS WITH DYNAMIC BENCHMARKS
 # ============================================================================
-def get_value_screeners():
-    """Define sector-wise valuation-based screening strategies"""
+def get_core_screening_strategies():
+    """Define 5 core valuation-based screening strategies"""
     
-    # Get all sectors
-    all_sectors = list(SECTOR_MAPPING.keys())
-    
-    screeners = {}
-    
-    # 1. UNDERVALUED STOCKS - for each sector
-    for sector in all_sectors:
-        sector_icon = get_sector_icon(sector)
-        screeners[f"{sector_icon} {sector} - Undervalued Stocks"] = {
-            'sector': sector,
+    return {
+        "💎 Undervalued Stocks": {
             'strategy_type': 'undervalued',
             'upside_min': 15.0,
             'upside_max': 500.0,  # Filter outliers
             'pe_max_multiplier': 0.9,  # PE below sector average
-            'description': f'Undervalued {sector.lower()} stocks with 15-500% upside potential'
-        }
-    
-    # 2. OVERVALUED STOCKS - for each sector
-    for sector in all_sectors:
-        sector_icon = get_sector_icon(sector)
-        screeners[f"{sector_icon} {sector} - Overvalued Stocks"] = {
-            'sector': sector,
+            'description': 'Stocks trading below fair value with PE below sector average'
+        },
+        
+        "📈 Overvalued Stocks": {
             'strategy_type': 'overvalued',
             'upside_min': -100.0,
             'upside_max': -5.0,  # Negative upside (overvalued)
             'pe_min_multiplier': 1.3,  # PE above 1.3x sector average
-            'description': f'Overvalued {sector.lower()} stocks trading above fair value'
-        }
-    
-    # 3. UNDERVALUED NEAR 52W HIGH - for each sector
-    for sector in all_sectors:
-        sector_icon = get_sector_icon(sector)
-        screeners[f"{sector_icon} {sector} - Undervalued Near 52W High"] = {
-            'sector': sector,
+            'description': 'Stocks trading above fair value with high PE multiples'
+        },
+        
+        "🚀 Undervalued Near 52W High": {
             'strategy_type': 'undervalued_near_high',
             'upside_min': 20.0,
             'upside_max': 500.0,
             'pe_max_multiplier': 0.8,  # Significantly undervalued
             'from_52w_high_max': -5.0,  # Within 5% of 52W high
             'from_52w_high_min': -20.0,  # But at least 5% away
-            'description': f'Undervalued {sector.lower()} stocks near 52-week highs'
-        }
-    
-    # 4. UNDERVALUED WITH MOMENTUM - for each sector
-    for sector in all_sectors:
-        sector_icon = get_sector_icon(sector)
-        screeners[f"{sector_icon} {sector} - Undervalued with Momentum"] = {
-            'sector': sector,
+            'description': 'Undervalued stocks near their 52-week highs with momentum'
+        },
+        
+        "⚡ Undervalued with Momentum": {
             'strategy_type': 'undervalued_momentum',
             'upside_min': 25.0,
             'upside_max': 500.0,
             'pe_max_multiplier': 0.85,  # Undervalued
             'from_52w_low_min': 25.0,  # At least 25% up from 52W low (momentum)
             'from_52w_high_min': -50.0,  # Still away from high (room to grow)
-            'description': f'Undervalued {sector.lower()} stocks with strong price momentum'
-        }
-    
-    # 5. UNDERVALUED WITH GROWTH POTENTIAL - for each sector
-    for sector in all_sectors:
-        sector_icon = get_sector_icon(sector)
-        screeners[f"{sector_icon} {sector} - Undervalued with Growth"] = {
-            'sector': sector,
+            'description': 'Undervalued stocks showing strong price momentum from lows'
+        },
+        
+        "🌱 Undervalued with Growth": {
             'strategy_type': 'undervalued_growth',
             'upside_min': 30.0,
             'upside_max': 500.0,
             'pe_max_multiplier': 0.8,  # Significantly undervalued
             'roe_min': 12.0,  # Good profitability for growth
-            'description': f'Undervalued {sector.lower()} stocks with strong growth potential'
+            'description': 'Undervalued stocks with strong growth potential (ROE > 12%)'
         }
-    
-    return screeners
+    }
 
 def get_sector_icon(sector):
     """Get icon for sector"""
@@ -1329,7 +1304,7 @@ st.markdown('''
     NYZTRADE SECTOR SCREENER
 </div>
 <div class="sub-header">
-    🎯 55 Sector-Wise Screeners | 5 Valuation Strategies | Dynamic Benchmarks | Outlier Filtering
+    🏢 Industry Selection → 🎯 Strategy Selection → 📊 Dynamic Analysis
 </div>
 ''', unsafe_allow_html=True)
 
@@ -1342,7 +1317,7 @@ st.markdown('<div class="section-header">📊 Sector-Wise Valuation Screening</d
 sector_stocks = get_all_stocks_by_sector()
 total_stocks = sum(len(stocks) for stocks in INDIAN_STOCKS.values())
 total_sectors = len(SECTOR_MAPPING)
-total_categories = len(INDIAN_STOCKS)
+total_strategies = len(get_core_screening_strategies())
 
 # Display statistics
 col1, col2, col3, col4 = st.columns(4)
@@ -1358,48 +1333,48 @@ with col1:
 with col2:
     st.markdown(f'''
     <div class="metric-card">
-        <div style="font-size: 2rem; font-weight: bold; color: #a78bfa;">5</div>
-        <div style="color: #94a3b8;">🎯 Value Strategies</div>
+        <div style="font-size: 2rem; font-weight: bold; color: #a78bfa;">{total_sectors}</div>
+        <div style="color: #94a3b8;">🏢 Industry Sectors</div>
     </div>
     ''', unsafe_allow_html=True)
 
 with col3:
     st.markdown(f'''
     <div class="metric-card">
-        <div style="font-size: 2rem; font-weight: bold; color: #a78bfa;">500%</div>
-        <div style="color: #94a3b8;">⚠️ Outlier Filter</div>
+        <div style="font-size: 2rem; font-weight: bold; color: #a78bfa;">{total_strategies}</div>
+        <div style="color: #94a3b8;">🎯 Core Strategies</div>
     </div>
     ''', unsafe_allow_html=True)
 
 with col4:
     st.markdown(f'''
     <div class="metric-card">
-        <div style="font-size: 2rem; font-weight: bold; color: #a78bfa;">✓</div>
-        <div style="color: #94a3b8;">🧮 Quality Validation</div>
+        <div style="font-size: 2rem; font-weight: bold; color: #a78bfa;">{total_sectors * total_strategies}</div>
+        <div style="color: #94a3b8;">⚡ Total Combinations</div>
     </div>
     ''', unsafe_allow_html=True)
 
 # Key features highlight
 st.markdown(f'''
 <div class="highlight-box">
-    <h3>💎 Advanced Value Screening Technology</h3>
+    <h3>🎯 Two-Step Sector Screening Process</h3>
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 15px 0;">
         <div>
-            <strong>💎 Deep Value Analysis:</strong> Identifies undervalued stocks with 20-500% upside potential<br>
-            <strong>🚀 Momentum Strategies:</strong> Finds undervalued stocks near 52-week highs<br>
-            <strong>🌱 Growth Potential:</strong> Combines value with high ROE for growth opportunities
+            <strong>🏢 Step 1 - Industry Selection:</strong> Choose from {total_sectors} major sectors<br>
+            <strong>🎯 Step 2 - Strategy Selection:</strong> Pick from {total_strategies} valuation strategies<br>
+            <strong>🧮 Dynamic Benchmarks:</strong> Real-time PE/PB/EV calculation per sector
         </div>
         <div>
-            <strong>⚠️ Outlier Protection:</strong> Excludes extreme outliers (>500% upside)<br>
-            <strong>🧮 Quality Validation:</strong> Only stocks with complete valuation data<br>
-            <strong>📊 Multi-Strategy:</strong> 5 distinct value-based screening approaches
+            <strong>🚫 Quality Control:</strong> Auto-exclude stocks without valuation data<br>
+            <strong>📊 Outlier Filtering:</strong> Remove extreme upside potentials >500%<br>
+            <strong>⚡ Flexibility:</strong> {total_sectors * total_strategies} unique screening combinations
         </div>
     </div>
 </div>
 ''', unsafe_allow_html=True)
 
 # Display sector breakdown with stock counts
-st.markdown("**📈 Multi-Sector Value Analysis Coverage:**")
+st.markdown("**🏢 Industry Selection Coverage - Step 1:**")
 sector_breakdown = []
 for sector, categories in SECTOR_MAPPING.items():
     stock_count = sum(len(INDIAN_STOCKS.get(cat, {})) for cat in categories)
@@ -1411,7 +1386,7 @@ col1, col2 = st.columns(2)
 for i, (sector, count) in enumerate(sector_breakdown):
     col = col1 if i % 2 == 0 else col2
     with col:
-        st.markdown(f"• **{sector}**: {count:,} stocks → Value screening")
+        st.markdown(f"• **{sector}**: {count:,} stocks → Select for targeted screening")
 
 # ============================================================================
 # SIDEBAR CONTROLS
@@ -1435,42 +1410,70 @@ with st.sidebar:
     )
     
     if mode == "🎯 Value-Based Screeners":
-        st.markdown("### 💎 Value-Based Screeners")
+        # ============================================
+        # INDUSTRY SELECTION SECTION
+        # ============================================
+        st.markdown("### 🏢 Industry Selection")
         
-        value_screeners = get_value_screeners()
-        selected_screener = st.selectbox(
-            "Choose Value Screener",
-            list(value_screeners.keys()),
-            help="Select a value-focused screening strategy"
+        # Get all sectors with stock counts
+        sector_options = []
+        for sector in SECTOR_MAPPING.keys():
+            stock_count = get_sector_stock_count(sector)
+            sector_icon = get_sector_icon(sector)
+            sector_options.append(f"{sector_icon} {sector} ({stock_count:,} stocks)")
+        
+        selected_sector_option = st.selectbox(
+            "Choose Industry/Sector",
+            sector_options,
+            help="Select the industry sector for targeted analysis"
         )
         
-        # Show screener details
-        screener_config = value_screeners[selected_screener]
+        # Extract sector name
+        selected_sector = selected_sector_option.split(" (")[0].split(" ", 1)[1]  # Remove icon and stock count
+        sector_icon = get_sector_icon(selected_sector)
+        sector_stock_count = get_sector_stock_count(selected_sector)
         
-        # Extract sector from screener name
-        if 'sector' in screener_config:
-            sector = screener_config['sector']
-            sector_stock_count = get_sector_stock_count(sector)
-            st.markdown(f"**🏢 Sector:** {sector}")
-            st.markdown(f"**📊 Sector Stocks:** {sector_stock_count:,}")
-        else:
-            total_stock_count = sum(len(stocks) for stocks in INDIAN_STOCKS.values())
-            st.markdown(f"**📊 Universe:** {total_stock_count:,} stocks across all sectors")
+        # Display sector info
+        st.markdown(f"""
+        **🏢 Selected Sector:** {sector_icon} {selected_sector}  
+        **📊 Available Stocks:** {sector_stock_count:,}  
+        **🧮 Dynamic Benchmarks:** Real-time PE/PB/EV calculation
+        """)
         
-        st.markdown(f"**📋 {screener_config['description']}**")
-        st.markdown(f"**🎯 Strategy:** {screener_config['strategy_type']}")
+        st.markdown("---")
+        
+        # ============================================
+        # SCREENER SELECTION SECTION  
+        # ============================================
+        st.markdown("### 🎯 Screening Strategy")
+        
+        core_strategies = get_core_screening_strategies()
+        selected_strategy_name = st.selectbox(
+            "Choose Screening Strategy",
+            list(core_strategies.keys()),
+            help="Select a valuation-based screening strategy for the chosen sector"
+        )
+        
+        # Get strategy config and add sector to it
+        strategy_config = core_strategies[selected_strategy_name].copy()
+        strategy_config['sector'] = selected_sector
+        
+        # Display strategy details
+        st.markdown(f"**📋 {strategy_config['description']}**")
+        st.markdown(f"**🎯 Strategy:** {strategy_config['strategy_type'].replace('_', ' ').title()}")
+        st.markdown(f"**🏢 Applied to:** {selected_sector}")
         
         # Show key criteria with dynamic benchmark info
-        if 'upside_min' in screener_config:
-            st.markdown(f"**📈 Min Upside:** {screener_config['upside_min']}%")
-        if 'upside_max' in screener_config:
-            st.markdown(f"**⚠️ Max Upside:** {screener_config['upside_max']}% (outlier filter)")
-        if 'pe_max_multiplier' in screener_config:
-            st.markdown(f"**💰 PE Filter:** {screener_config['pe_max_multiplier']}x sector average")
-        if 'pe_min_multiplier' in screener_config:
-            st.markdown(f"**💰 PE Filter:** ≥{screener_config['pe_min_multiplier']}x sector average")
-        if 'roe_min' in screener_config:
-            st.markdown(f"**🌱 Min ROE:** {screener_config['roe_min']}%")
+        if 'upside_min' in strategy_config:
+            st.markdown(f"**📈 Min Upside:** {strategy_config['upside_min']}%")
+        if 'upside_max' in strategy_config:
+            st.markdown(f"**⚠️ Max Upside:** {strategy_config['upside_max']}% (outlier filter)")
+        if 'pe_max_multiplier' in strategy_config:
+            st.markdown(f"**💰 PE Filter:** ≤{strategy_config['pe_max_multiplier']}x sector average")
+        if 'pe_min_multiplier' in strategy_config:
+            st.markdown(f"**💰 PE Filter:** ≥{strategy_config['pe_min_multiplier']}x sector average")
+        if 'roe_min' in strategy_config:
+            st.markdown(f"**🌱 Min ROE:** {strategy_config['roe_min']}%")
         
         # Advanced filters
         with st.expander("🔧 Advanced Filters"):
@@ -1478,8 +1481,8 @@ with st.sidebar:
             result_limit = st.slider(
                 "Max Results", 
                 min_value=10, 
-                max_value=500, 
-                value=100, 
+                max_value=min(500, sector_stock_count), 
+                value=min(100, sector_stock_count), 
                 step=10,
                 help="Maximum number of results to display"
             )
@@ -1487,7 +1490,7 @@ with st.sidebar:
             # Override default criteria with consistent float types
             custom_upside_min = st.number_input(
                 "Custom Min Upside %", 
-                value=float(screener_config.get('upside_min', 15)), 
+                value=float(strategy_config.get('upside_min', 15)), 
                 min_value=0.0, 
                 max_value=100.0, 
                 step=5.0
@@ -1495,7 +1498,7 @@ with st.sidebar:
             
             custom_upside_max = st.number_input(
                 "Custom Max Upside % (Outlier Filter)", 
-                value=float(screener_config.get('upside_max', 500)), 
+                value=float(strategy_config.get('upside_max', 500)), 
                 min_value=100.0, 
                 max_value=1000.0, 
                 step=50.0,
@@ -1503,19 +1506,19 @@ with st.sidebar:
             )
             
             # PE multiplier for dynamic benchmarks
-            if 'pe_max_multiplier' in screener_config:
+            if 'pe_max_multiplier' in strategy_config:
                 custom_pe_multiplier = st.number_input(
                     "Custom PE Multiplier (vs Sector Average)", 
-                    value=float(screener_config.get('pe_max_multiplier', 1.0)), 
+                    value=float(strategy_config.get('pe_max_multiplier', 1.0)), 
                     min_value=0.5, 
                     max_value=2.0, 
                     step=0.1,
                     help="PE ratio as multiple of sector average (e.g., 0.8 = 80% of sector PE)"
                 )
-            elif 'pe_min_multiplier' in screener_config:
+            elif 'pe_min_multiplier' in strategy_config:
                 custom_pe_multiplier = st.number_input(
                     "Custom PE Multiplier (vs Sector Average)", 
-                    value=float(screener_config.get('pe_min_multiplier', 1.0)), 
+                    value=float(strategy_config.get('pe_min_multiplier', 1.0)), 
                     min_value=1.0, 
                     max_value=3.0, 
                     step=0.1,
@@ -1525,10 +1528,10 @@ with st.sidebar:
                 custom_pe_multiplier = None
             
             # ROE filter for growth strategies
-            if 'roe_min' in screener_config:
+            if 'roe_min' in strategy_config:
                 custom_roe_min = st.number_input(
                     "Custom Min ROE %", 
-                    value=float(screener_config.get('roe_min', 12)), 
+                    value=float(strategy_config.get('roe_min', 12)), 
                     min_value=0.0, 
                     max_value=50.0, 
                     step=2.0,
@@ -1538,9 +1541,9 @@ with st.sidebar:
                 custom_roe_min = None
             
             st.info("🎯 Stocks without valuation data and outliers >500% are automatically excluded")
-            st.info("🧮 Dynamic sector benchmarks are calculated in real-time")
+            st.info(f"🧮 Dynamic benchmarks calculated for {selected_sector} sector")
         
-        run_screener = st.button("🚀 RUN VALUE SCREENER", use_container_width=True, type="primary")
+        run_screener = st.button("🚀 RUN SECTOR SCREENER", use_container_width=True, type="primary")
     
     else:  # Individual Stock Analysis
         st.markdown("### 📈 Individual Stock Analysis")
@@ -1607,18 +1610,16 @@ with st.sidebar:
 
 if mode == "🎯 Value-Based Screeners":
     if run_screener:
-        screener_config = value_screeners[selected_screener]
-        
         # Update criteria with custom values
-        updated_config = screener_config.copy()
+        updated_config = strategy_config.copy()
         updated_config['upside_min'] = custom_upside_min
         updated_config['upside_max'] = custom_upside_max
         
         # Update PE multiplier if applicable
         if custom_pe_multiplier is not None:
-            if 'pe_max_multiplier' in screener_config:
+            if 'pe_max_multiplier' in strategy_config:
                 updated_config['pe_max_multiplier'] = custom_pe_multiplier
-            elif 'pe_min_multiplier' in screener_config:
+            elif 'pe_min_multiplier' in strategy_config:
                 updated_config['pe_min_multiplier'] = custom_pe_multiplier
         
         # Update ROE if applicable  
@@ -1627,12 +1628,13 @@ if mode == "🎯 Value-Based Screeners":
         
         st.markdown(f'''
         <div class="highlight-box">
-            <h3>💎 {selected_screener}</h3>
-            <p><strong>Sector:</strong> {updated_config.get('sector', 'All Sectors')}</p>
-            <p><strong>Strategy:</strong> {updated_config['strategy_type'].replace('_', ' ').title()}</p>
-            <p><strong>Description:</strong> {updated_config['description']}</p>
-            <p><strong>Dynamic Filters:</strong> Upside {custom_upside_min}% to {custom_upside_max}%</p>
-            <p><strong>Scope:</strong> Sector-specific analysis with dynamic benchmarks</p>
+            <h3>{sector_icon} {selected_strategy_name} - {selected_sector}</h3>
+            <p><strong>🏢 Industry Sector:</strong> {selected_sector}</p>
+            <p><strong>🎯 Strategy:</strong> {updated_config['strategy_type'].replace('_', ' ').title()}</p>
+            <p><strong>📋 Description:</strong> {updated_config['description']}</p>
+            <p><strong>📊 Stock Universe:</strong> {sector_stock_count:,} stocks in {selected_sector}</p>
+            <p><strong>🧮 Dynamic Filters:</strong> Upside {custom_upside_min}% to {custom_upside_max}%</p>
+            <p><strong>🔧 Analysis Method:</strong> Sector-specific dynamic benchmarks</p>
         </div>
         ''', unsafe_allow_html=True)
         
@@ -1640,19 +1642,19 @@ if mode == "🎯 Value-Based Screeners":
         results_df = run_value_screener(updated_config, None, result_limit)
         
         if results_df.empty:
-            st.warning("❌ No stocks match the screening criteria. Try relaxing the filters.")
+            st.warning(f"❌ No stocks in {selected_sector} match the {selected_strategy_name.lower()} criteria. Try adjusting the filters.")
         else:
             st.markdown(f'''
             <div class="success-message">
-                ✅ Found <strong>{len(results_df)}</strong> {updated_config['strategy_type'].replace('_', ' ')} opportunities in {updated_config.get('sector', 'All Sectors')}<br>
+                ✅ Found <strong>{len(results_df)}</strong> {updated_config['strategy_type'].replace('_', ' ')} opportunities in {selected_sector}<br>
                 📊 Strategy: {updated_config['description']}<br>
-                🎯 Filtered: Excluded outliers (>{custom_upside_max}%) and stocks without valuation data<br>
-                🧮 Analysis: Real-time dynamic benchmarks applied
+                🎯 Quality Control: Excluded outliers (>{custom_upside_max}%) and stocks without valuation data<br>
+                🧮 Benchmark Method: Real-time {selected_sector} sector averages applied
             </div>
             ''', unsafe_allow_html=True)
             
             # Sort by upside percentage appropriately
-            if screener_config['strategy_type'] == 'overvalued':
+            if updated_config['strategy_type'] == 'overvalued':
                 # For overvalued stocks, sort by most negative upside first
                 results_df = results_df.sort_values('Upside %', ascending=True, na_position='last')
             else:
@@ -1673,15 +1675,15 @@ if mode == "🎯 Value-Based Screeners":
             display_df['From 52W Low %'] = display_df['From 52W Low %'].apply(lambda x: f"{x:+.1f}%" if pd.notna(x) else "N/A")
             
             # Display results
-            st.markdown('<div class="section-header">💎 Value Screening Results</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="section-header">{sector_icon} {selected_sector} - {selected_strategy_name} Results</div>', unsafe_allow_html=True)
             
-            # Show columns optimized for value analysis
-            if screener_config['strategy_type'] in ['undervalued_momentum', 'undervalued_momentum_plus']:
-                display_columns = ['Ticker', 'Name', 'Sector', 'Price', 'Fair Value', 'Upside %', 'From 52W High %', 'From 52W Low %', 'PE Ratio']
-            elif screener_config['strategy_type'] == 'undervalued_growth':
-                display_columns = ['Ticker', 'Name', 'Sector', 'Price', 'Fair Value', 'Upside %', 'PE Ratio', 'ROE %', 'Cap Type']
+            # Show columns optimized for strategy type
+            if 'momentum' in updated_config['strategy_type']:
+                display_columns = ['Ticker', 'Name', 'Price', 'Fair Value', 'Upside %', 'From 52W High %', 'From 52W Low %', 'PE vs Sector']
+            elif updated_config['strategy_type'] == 'undervalued_growth':
+                display_columns = ['Ticker', 'Name', 'Price', 'Fair Value', 'Upside %', 'PE vs Sector', 'ROE %', 'Cap Type']
             else:
-                display_columns = ['Ticker', 'Name', 'Sector', 'Price', 'Fair Value', 'Upside %', 'PE Ratio', 'From 52W High %', 'Cap Type']
+                display_columns = ['Ticker', 'Name', 'Price', 'Fair Value', 'Upside %', 'PE vs Sector', 'From 52W High %', 'Cap Type']
             
             st.dataframe(
                 display_df[display_columns],
@@ -1693,10 +1695,10 @@ if mode == "🎯 Value-Based Screeners":
             # Download option with enhanced data
             csv = results_df.to_csv(index=False)
             timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-            filename = f"NYZTrade_{screener_config['strategy_type'].title()}_Screen_{timestamp}.csv"
+            filename = f"NYZTrade_{selected_sector.replace(' ', '_')}_{selected_strategy_name.replace(' ', '_')}_Screen_{timestamp}.csv"
             
             st.download_button(
-                f"📥 Download Results ({len(results_df)} stocks)",
+                f"📥 Download {selected_sector} {selected_strategy_name} Results ({len(results_df)} stocks)",
                 data=csv,
                 file_name=filename,
                 mime="text/csv",
@@ -1860,16 +1862,15 @@ elif mode == "📈 Individual Stock Analysis":
 # Footer
 st.markdown('''
 <div style="margin-top: 50px; padding: 30px; background: rgba(30, 41, 59, 0.4); border-radius: 15px; text-align: center;">
-    <h4 style="color: #a78bfa; margin-bottom: 15px;">NYZTrade Value | Advanced Multi-Strategy Value Analysis</h4>
+    <h4 style="color: #a78bfa; margin-bottom: 15px;">NYZTrade Sector | Two-Step Industry-Focused Analysis</h4>
     <div class="disclaimer">
-        ⚠️ <strong>Important Disclaimer:</strong> This platform uses advanced value-based screening strategies with 
-        outlier filtering and quality validation. The analysis, recommendations, and data presented here should not be 
-        considered as financial advice or investment recommendations. Stocks with extreme outliers (>500% upside) are 
-        excluded to prevent unrealistic expectations. Only stocks with complete valuation data are included in results. 
-        Always conduct your own research and consult with qualified financial professionals before making any investment decisions.
+        ⚠️ <strong>Important Disclaimer:</strong> This platform uses a two-step screening process: first select an industry sector, 
+        then choose from 5 valuation strategies. Dynamic benchmarks are calculated from real sector data. Stocks with extreme outliers 
+        (>500% upside) and incomplete valuation data are automatically excluded. The analysis and recommendations should not be 
+        considered as financial advice. Always conduct your own research and consult with qualified financial professionals before making any investment decisions.
     </div>
     <div style="margin-top: 15px; color: #64748b; font-size: 0.9rem;">
-        © 2024 NYZTrade Value | Stock Universe: 8,984 Indian Stocks | Outlier Filter: >500% | Quality Validation: Complete Valuation Data Only
+        © 2024 NYZTrade Sector | 11 Industry Sectors × 5 Strategies = 55 Combinations | Dynamic Benchmarks | Quality Validation
     </div>
 </div>
 ''', unsafe_allow_html=True)
