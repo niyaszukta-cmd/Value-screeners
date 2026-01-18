@@ -9729,8 +9729,64 @@ INDIAN_STOCKS = {
 
 
 # ============================================================================
-# INDUSTRY BENCHMARKS AND SECTOR MAPPING
+# COMPREHENSIVE INDUSTRY-SPECIFIC BENCHMARKS SYSTEM
 # ============================================================================
+
+# Industry-specific benchmarks based on Indian market analysis
+INDUSTRY_BENCHMARKS = {
+    # Financial Services - Industry Specific
+    "Credit Services": {'pe': 16.0, 'pb': 2.8, 'roe': 18.0, 'ev_ebitda': 10.0, 'debt_equity': 4.5},
+    "Financial Services": {'pe': 15.0, 'pb': 2.2, 'roe': 16.0, 'ev_ebitda': 9.0, 'debt_equity': 3.8},
+    "Insurance - Life": {'pe': 20.0, 'pb': 2.0, 'roe': 14.0, 'ev_ebitda': 12.0, 'debt_equity': 0.2},
+    "Insurance - Property & Casualty": {'pe': 18.0, 'pb': 1.8, 'roe': 15.0, 'ev_ebitda': 11.0, 'debt_equity': 0.3},
+    "Money Center Banks": {'pe': 12.0, 'pb': 1.2, 'roe': 15.0, 'ev_ebitda': 8.0, 'debt_equity': 0.1},
+    
+    # Technology - Industry Specific
+    "Information Technology Services": {'pe': 24.0, 'pb': 4.2, 'roe': 22.0, 'ev_ebitda': 16.0, 'debt_equity': 0.1},
+    "Wireless Communications": {'pe': 18.0, 'pb': 2.8, 'roe': 16.0, 'ev_ebitda': 12.0, 'debt_equity': 1.2},
+    
+    # Healthcare & Pharma - Industry Specific
+    "Drug Manufacturers - Major": {'pe': 26.0, 'pb': 3.2, 'roe': 18.0, 'ev_ebitda': 15.0, 'debt_equity': 0.3},
+    "Drug Manufacturers - Other": {'pe': 28.0, 'pb': 3.5, 'roe': 16.0, 'ev_ebitda': 16.0, 'debt_equity': 0.2},
+    "Medical Services": {'pe': 32.0, 'pb': 3.8, 'roe': 17.0, 'ev_ebitda': 18.0, 'debt_equity': 0.8},
+    
+    # Auto & Manufacturing - Industry Specific  
+    "Auto Manufacturers - Major": {'pe': 18.0, 'pb': 2.2, 'roe': 14.0, 'ev_ebitda': 10.0, 'debt_equity': 0.8},
+    "Auto Parts": {'pe': 22.0, 'pb': 2.8, 'roe': 16.0, 'ev_ebitda': 12.0, 'debt_equity': 0.6},
+    "Diversified Electronics": {'pe': 24.0, 'pb': 3.0, 'roe': 17.0, 'ev_ebitda': 13.0, 'debt_equity': 0.4},
+    "Diversified Machinery": {'pe': 20.0, 'pb': 2.5, 'roe': 15.0, 'ev_ebitda': 11.0, 'debt_equity': 0.7},
+    
+    # Materials & Chemicals - Industry Specific
+    "Steel & Iron": {'pe': 12.0, 'pb': 1.0, 'roe': 12.0, 'ev_ebitda': 6.0, 'debt_equity': 1.5},
+    "Cement & Aggregates": {'pe': 16.0, 'pb': 1.8, 'roe': 13.0, 'ev_ebitda': 8.0, 'debt_equity': 1.0},
+    "Chemicals - Major Diversified": {'pe': 22.0, 'pb': 2.5, 'roe': 15.0, 'ev_ebitda': 12.0, 'debt_equity': 0.5},
+    "Agricultural Chemicals": {'pe': 20.0, 'pb': 2.2, 'roe': 16.0, 'ev_ebitda': 11.0, 'debt_equity': 0.6},
+    
+    # Energy & Utilities - Industry Specific
+    "Oil & Gas Operations": {'pe': 8.0, 'pb': 0.8, 'roe': 12.0, 'ev_ebitda': 5.0, 'debt_equity': 0.6},
+    "Oil & Gas Refining & Marketing": {'pe': 10.0, 'pb': 1.0, 'roe': 10.0, 'ev_ebitda': 6.0, 'debt_equity': 0.8},
+    "Electric Utilities": {'pe': 14.0, 'pb': 1.2, 'roe': 11.0, 'ev_ebitda': 8.0, 'debt_equity': 1.8},
+    "Gas Utilities": {'pe': 16.0, 'pb': 1.5, 'roe': 12.0, 'ev_ebitda': 9.0, 'debt_equity': 1.5},
+    "Renewable Energy": {'pe': 25.0, 'pb': 2.0, 'roe': 10.0, 'ev_ebitda': 12.0, 'debt_equity': 2.2},
+    
+    # Consumer - Industry Specific
+    "Food - Major Diversified": {'pe': 35.0, 'pb': 4.5, 'roe': 18.0, 'ev_ebitda': 18.0, 'debt_equity': 0.3},
+    "Jewelry Stores": {'pe': 25.0, 'pb': 2.8, 'roe': 16.0, 'ev_ebitda': 15.0, 'debt_equity': 0.4},
+    "Retail - Apparel & Accessories": {'pe': 28.0, 'pb': 3.2, 'roe': 17.0, 'ev_ebitda': 16.0, 'debt_equity': 0.6},
+    
+    # Others
+    "Real Estate Development": {'pe': 15.0, 'pb': 1.2, 'roe': 8.0, 'ev_ebitda': 12.0, 'debt_equity': 2.5},
+    "Textile Industrial": {'pe': 18.0, 'pb': 1.5, 'roe': 12.0, 'ev_ebitda': 10.0, 'debt_equity': 0.9},
+}
+
+# Cap-size specific multipliers for benchmarks
+CAP_SIZE_MULTIPLIERS = {
+    'Large': {'pe': 1.0, 'pb': 1.0, 'ev_ebitda': 1.0},      # Base benchmarks
+    'Mid': {'pe': 1.15, 'pb': 1.1, 'ev_ebitda': 1.1},       # 10-15% premium for growth
+    'Small': {'pe': 1.25, 'pb': 1.2, 'ev_ebitda': 1.15}     # 15-25% premium for higher growth
+}
+
+# Sector mapping for fallback when industry not found
 INDUSTRY_TO_SECTOR = {
     # Financial Services
     "Credit Services": "Financial Services", 
@@ -9752,6 +9808,8 @@ INDUSTRY_TO_SECTOR = {
     "Diversified Electronics": "Industrial & Manufacturing",
     "Diversified Machinery": "Industrial & Manufacturing",
     "Steel & Iron": "Industrial & Manufacturing",
+    "Auto Manufacturers - Major": "Industrial & Manufacturing",
+    "Auto Parts": "Industrial & Manufacturing",
     
     # Energy & Utilities
     "Electric Utilities": "Energy & Utilities",
@@ -9761,8 +9819,6 @@ INDUSTRY_TO_SECTOR = {
     "Renewable Energy": "Energy & Utilities",
     
     # Consumer & Retail
-    "Auto Manufacturers - Major": "Consumer & Retail",
-    "Auto Parts": "Consumer & Retail",
     "Food - Major Diversified": "Consumer & Retail",
     "Jewelry Stores": "Consumer & Retail",
     "Retail - Apparel & Accessories": "Consumer & Retail",
@@ -9779,17 +9835,18 @@ INDUSTRY_TO_SECTOR = {
     "Textile Industrial": "Textiles"
 }
 
+# Fallback sector benchmarks
 SECTOR_BENCHMARKS = {
-    'Financial Services': {'pe': 18.0, 'pb': 1.5, 'roe': 15.0, 'ev_ebitda': 12.0},
-    'Technology': {'pe': 25.0, 'pb': 3.5, 'roe': 20.0, 'ev_ebitda': 15.0},
-    'Healthcare & Pharma': {'pe': 28.0, 'pb': 3.0, 'roe': 18.0, 'ev_ebitda': 14.0},
-    'Industrial & Manufacturing': {'pe': 22.0, 'pb': 2.0, 'roe': 14.0, 'ev_ebitda': 12.0},
-    'Energy & Utilities': {'pe': 15.0, 'pb': 1.2, 'roe': 12.0, 'ev_ebitda': 8.0},
-    'Consumer & Retail': {'pe': 30.0, 'pb': 2.5, 'roe': 16.0, 'ev_ebitda': 14.0},
-    'Materials & Chemicals': {'pe': 18.0, 'pb': 1.8, 'roe': 13.0, 'ev_ebitda': 10.0},
-    'Real Estate & Construction': {'pe': 25.0, 'pb': 1.5, 'roe': 12.0, 'ev_ebitda': 18.0},
-    'Textiles': {'pe': 20.0, 'pb': 1.5, 'roe': 15.0, 'ev_ebitda': 12.0},
-    'Other': {'pe': 20.0, 'pb': 2.0, 'roe': 15.0, 'ev_ebitda': 12.0}
+    'Financial Services': {'pe': 15.0, 'pb': 2.0, 'roe': 16.0, 'ev_ebitda': 10.0},
+    'Technology': {'pe': 24.0, 'pb': 4.0, 'roe': 22.0, 'ev_ebitda': 16.0},
+    'Healthcare & Pharma': {'pe': 28.0, 'pb': 3.4, 'roe': 17.0, 'ev_ebitda': 16.0},
+    'Industrial & Manufacturing': {'pe': 20.0, 'pb': 2.5, 'roe': 15.0, 'ev_ebitda': 11.0},
+    'Energy & Utilities': {'pe': 12.0, 'pb': 1.2, 'roe': 11.0, 'ev_ebitda': 7.0},
+    'Consumer & Retail': {'pe': 30.0, 'pb': 3.5, 'roe': 17.0, 'ev_ebitda': 16.0},
+    'Materials & Chemicals': {'pe': 18.0, 'pb': 2.0, 'roe': 14.0, 'ev_ebitda': 10.0},
+    'Real Estate & Construction': {'pe': 15.0, 'pb': 1.2, 'roe': 8.0, 'ev_ebitda': 12.0},
+    'Textiles': {'pe': 18.0, 'pb': 1.5, 'roe': 12.0, 'ev_ebitda': 10.0},
+    'Other': {'pe': 20.0, 'pb': 2.5, 'roe': 15.0, 'ev_ebitda': 12.0}
 }
 
 # ============================================================================
@@ -9844,6 +9901,141 @@ TOTAL_STOCKS = sum(len(stocks) for stocks in INDIAN_STOCKS.values())
 TOTAL_CATEGORIES = len(INDIAN_STOCKS)
 
 # ============================================================================
+# TECHNICAL ANALYSIS FUNCTIONS
+# ============================================================================
+@st.cache_data(ttl=3600)
+def fetch_price_history(ticker, period="3mo"):
+    """Fetch historical price data for technical analysis"""
+    try:
+        stock = yf.Ticker(ticker)
+        hist = stock.history(period=period)
+        if hist.empty:
+            return None
+        return hist
+    except:
+        return None
+
+def calculate_supertrend(high, low, close, period=10, multiplier=3):
+    """Calculate SuperTrend indicator"""
+    try:
+        # Calculate ATR (Average True Range)
+        tr1 = high - low
+        tr2 = abs(high - close.shift())
+        tr3 = abs(low - close.shift())
+        tr = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1)
+        atr = tr.rolling(window=period).mean()
+        
+        # Calculate basic upper and lower bands
+        hl_avg = (high + low) / 2
+        upper_band = hl_avg + (multiplier * atr)
+        lower_band = hl_avg - (multiplier * atr)
+        
+        # Initialize SuperTrend
+        supertrend = pd.Series(index=close.index, dtype=float)
+        direction = pd.Series(index=close.index, dtype=int)
+        
+        # Calculate SuperTrend
+        for i in range(1, len(close)):
+            if pd.isna(upper_band.iloc[i]) or pd.isna(lower_band.iloc[i]):
+                continue
+                
+            # Current upper and lower bands
+            curr_upper = upper_band.iloc[i]
+            curr_lower = lower_band.iloc[i]
+            prev_close = close.iloc[i-1]
+            curr_close = close.iloc[i]
+            
+            # Adjust bands
+            if curr_upper < upper_band.iloc[i-1] or prev_close > upper_band.iloc[i-1]:
+                upper_band.iloc[i] = curr_upper
+            else:
+                upper_band.iloc[i] = upper_band.iloc[i-1]
+                
+            if curr_lower > lower_band.iloc[i-1] or prev_close < lower_band.iloc[i-1]:
+                lower_band.iloc[i] = curr_lower
+            else:
+                lower_band.iloc[i] = lower_band.iloc[i-1]
+            
+            # Determine trend direction
+            if i == 1:
+                direction.iloc[i] = 1 if curr_close <= lower_band.iloc[i] else -1
+                supertrend.iloc[i] = lower_band.iloc[i] if direction.iloc[i] == 1 else upper_band.iloc[i]
+            else:
+                prev_supertrend = supertrend.iloc[i-1]
+                prev_direction = direction.iloc[i-1]
+                
+                if prev_direction == 1 and curr_close >= lower_band.iloc[i]:
+                    direction.iloc[i] = -1
+                    supertrend.iloc[i] = upper_band.iloc[i]
+                elif prev_direction == -1 and curr_close <= upper_band.iloc[i]:
+                    direction.iloc[i] = 1
+                    supertrend.iloc[i] = lower_band.iloc[i]
+                else:
+                    direction.iloc[i] = prev_direction
+                    supertrend.iloc[i] = lower_band.iloc[i] if direction.iloc[i] == 1 else upper_band.iloc[i]
+        
+        # Return signal: 1 for bullish (price > supertrend), -1 for bearish
+        signal = (close > supertrend).astype(int) * 2 - 1
+        
+        return {
+            'supertrend': supertrend,
+            'direction': direction,
+            'signal': signal.iloc[-1] if len(signal) > 0 else 0,
+            'upper_band': upper_band,
+            'lower_band': lower_band
+        }
+    except Exception as e:
+        return None
+
+def is_near_52w_high(price, high_52w, threshold=0.95):
+    """Check if current price is near 52-week high"""
+    if not price or not high_52w or high_52w <= 0:
+        return False
+    return (price / high_52w) >= threshold
+
+def get_technical_signals(ticker):
+    """Get comprehensive technical signals for a stock"""
+    hist = fetch_price_history(ticker, period="6mo")
+    if hist is None or len(hist) < 50:
+        return None
+    
+    try:
+        # Calculate SuperTrend
+        supertrend_data = calculate_supertrend(
+            hist['High'], 
+            hist['Low'], 
+            hist['Close']
+        )
+        
+        if not supertrend_data:
+            return None
+        
+        # Get current price and 52-week high
+        current_price = hist['Close'].iloc[-1]
+        high_52w = hist['High'].rolling(window=252).max().iloc[-1]
+        
+        # Additional technical indicators
+        sma_20 = hist['Close'].rolling(window=20).mean().iloc[-1]
+        sma_50 = hist['Close'].rolling(window=50).mean().iloc[-1]
+        
+        # Volume trend
+        avg_volume = hist['Volume'].rolling(window=20).mean().iloc[-1]
+        recent_volume = hist['Volume'].iloc[-5:].mean()
+        
+        return {
+            'supertrend_signal': supertrend_data['signal'],
+            'supertrend_value': supertrend_data['supertrend'].iloc[-1] if not pd.isna(supertrend_data['supertrend'].iloc[-1]) else None,
+            'near_52w_high': is_near_52w_high(current_price, high_52w),
+            'price_vs_52w_high': (current_price / high_52w) if high_52w > 0 else 0,
+            'above_sma20': current_price > sma_20 if not pd.isna(sma_20) else False,
+            'above_sma50': current_price > sma_50 if not pd.isna(sma_50) else False,
+            'volume_surge': recent_volume > avg_volume * 1.2 if avg_volume > 0 else False,
+            'current_price': current_price
+        }
+    except Exception as e:
+        return None
+
+# ============================================================================
 # STOCK DATA FETCHING AND CACHING
 # ============================================================================
 def retry_with_backoff(retries=3, backoff_in_seconds=2):
@@ -9880,7 +10072,7 @@ def fetch_stock_data(ticker):
         return None, str(e)[:100]
 
 def get_stock_fundamentals(ticker):
-    """Get key fundamental metrics for a stock"""
+    """Get key fundamental metrics for a stock with enhanced sector analysis"""
     info, error = fetch_stock_data(ticker)
     
     if error or not info:
@@ -9888,11 +10080,12 @@ def get_stock_fundamentals(ticker):
     
     try:
         # Extract key metrics
+        market_cap = info.get('marketCap', 0)
         fundamentals = {
             'ticker': ticker,
             'name': info.get('longName', info.get('shortName', 'Unknown')),
             'price': info.get('currentPrice', info.get('regularMarketPrice')),
-            'market_cap': info.get('marketCap'),
+            'market_cap': market_cap,
             'trailing_pe': info.get('trailingPE'),
             'pb_ratio': info.get('priceToBook'),
             'roe': info.get('returnOnEquity'),
@@ -9908,7 +10101,9 @@ def get_stock_fundamentals(ticker):
             'enterprise_value': info.get('enterpriseValue'),
             'ebitda': info.get('ebitda'),
             'book_value': info.get('bookValue'),
-            'revenue': info.get('totalRevenue')
+            'revenue': info.get('totalRevenue'),
+            'sector': info.get('sector', 'Other'),
+            'industry': info.get('industry', 'Other')
         }
         
         # Calculate additional metrics
@@ -9918,13 +10113,13 @@ def get_stock_fundamentals(ticker):
         if fundamentals['price'] and fundamentals['52w_low']:
             fundamentals['pct_from_low'] = ((fundamentals['price'] - fundamentals['52w_low']) / fundamentals['52w_low']) * 100
         
-        # Determine market cap category
-        if fundamentals['market_cap']:
-            if fundamentals['market_cap'] >= 200000000000:  # 20,000 Cr
+        # Determine market cap category for Indian market (in INR)
+        if market_cap:
+            if market_cap >= 200000000000:  # ≥₹20,000 Cr
                 fundamentals['cap_type'] = 'Large'
-            elif fundamentals['market_cap'] >= 50000000000:  # 5,000 Cr
+            elif market_cap >= 50000000000:  # ₹5,000-20,000 Cr
                 fundamentals['cap_type'] = 'Mid'
-            else:
+            else:  # <₹5,000 Cr
                 fundamentals['cap_type'] = 'Small'
         else:
             fundamentals['cap_type'] = 'Unknown'
@@ -9934,8 +10129,27 @@ def get_stock_fundamentals(ticker):
     except Exception as e:
         return None
 
-def calculate_valuations(info):
-    """Advanced valuation calculations using multiple methods"""
+def get_industry_benchmarks(industry, cap_type='Large'):
+    """Get industry-specific benchmarks with cap-size adjustments"""
+    # Get industry-specific benchmarks first
+    if industry in INDUSTRY_BENCHMARKS:
+        base_benchmarks = INDUSTRY_BENCHMARKS[industry].copy()
+    else:
+        # Fallback to sector benchmarks
+        sector = get_sector_for_industry(industry)
+        base_benchmarks = SECTOR_BENCHMARKS.get(sector, SECTOR_BENCHMARKS['Other']).copy()
+    
+    # Apply cap-size multipliers
+    if cap_type in CAP_SIZE_MULTIPLIERS:
+        multipliers = CAP_SIZE_MULTIPLIERS[cap_type]
+        base_benchmarks['pe'] *= multipliers['pe']
+        base_benchmarks['pb'] *= multipliers['pb'] 
+        base_benchmarks['ev_ebitda'] *= multipliers['ev_ebitda']
+    
+    return base_benchmarks
+
+def calculate_valuations(info, industry=None):
+    """Advanced valuation calculations using industry-specific benchmarks"""
     try:
         price = info.get('currentPrice', 0) or info.get('regularMarketPrice', 0)
         trailing_pe = info.get('trailingPE', 0)
@@ -9945,39 +10159,59 @@ def calculate_valuations(info):
         ebitda = info.get('ebitda', 0)
         market_cap = info.get('marketCap', 0)
         shares = info.get('sharesOutstanding', 1)
-        sector = info.get('sector', 'Other')
         book_value = info.get('bookValue', 0)
         revenue = info.get('totalRevenue', 0)
         
-        # Map yfinance sector to our sector classification
-        sector_mapping = {
-            'Technology': 'Technology',
-            'Financial Services': 'Financial Services',
-            'Healthcare': 'Healthcare & Pharma',
-            'Industrials': 'Industrial & Manufacturing',
-            'Energy': 'Energy & Utilities',
-            'Consumer Cyclical': 'Consumer & Retail',
-            'Consumer Defensive': 'Consumer & Retail',
-            'Basic Materials': 'Materials & Chemicals',
-            'Communication Services': 'Technology',
-            'Real Estate': 'Real Estate & Construction',
-            'Utilities': 'Energy & Utilities'
-        }
+        # Determine market cap category
+        if market_cap >= 200000000000:  # ≥₹20,000 Cr
+            cap_type = 'Large'
+        elif market_cap >= 50000000000:  # ₹5,000-20,000 Cr
+            cap_type = 'Mid'
+        else:  # <₹5,000 Cr
+            cap_type = 'Small'
         
-        mapped_sector = sector_mapping.get(sector, 'Other')
-        benchmark = SECTOR_BENCHMARKS.get(mapped_sector, SECTOR_BENCHMARKS['Other'])
-        industry_pe = benchmark['pe']
-        industry_ev_ebitda = benchmark['ev_ebitda']
+        # Get industry-specific benchmarks
+        if industry:
+            benchmarks = get_industry_benchmarks(industry, cap_type)
+        else:
+            # Fallback to yfinance sector mapping
+            sector = info.get('sector', 'Other')
+            sector_mapping = {
+                'Technology': 'Information Technology Services',
+                'Financial Services': 'Money Center Banks', 
+                'Healthcare': 'Drug Manufacturers - Major',
+                'Industrials': 'Diversified Machinery',
+                'Energy': 'Oil & Gas Operations',
+                'Consumer Cyclical': 'Auto Manufacturers - Major',
+                'Consumer Defensive': 'Food - Major Diversified',
+                'Basic Materials': 'Steel & Iron',
+                'Communication Services': 'Wireless Communications',
+                'Real Estate': 'Real Estate Development',
+                'Utilities': 'Electric Utilities'
+            }
+            mapped_industry = sector_mapping.get(sector, 'Other')
+            benchmarks = get_industry_benchmarks(mapped_industry, cap_type)
         
-        # PE-based valuation
-        historical_pe = trailing_pe * 0.9 if trailing_pe and trailing_pe > 0 else industry_pe
-        blended_pe = (industry_pe + historical_pe) / 2
+        industry_pe = benchmarks['pe']
+        industry_ev_ebitda = benchmarks['ev_ebitda']
+        
+        # Enhanced PE-based valuation
+        historical_pe = trailing_pe if trailing_pe and 0 < trailing_pe < 100 else industry_pe
+        # Blend industry benchmark with historical PE (weighted by cap size)
+        pe_weight = 0.8 if cap_type == 'Large' else 0.7 if cap_type == 'Mid' else 0.6
+        blended_pe = (industry_pe * pe_weight) + (historical_pe * (1 - pe_weight))
         fair_value_pe = trailing_eps * blended_pe if trailing_eps else None
         upside_pe = ((fair_value_pe - price) / price * 100) if fair_value_pe and price else None
         
-        # EV/EBITDA-based valuation
+        # Enhanced EV/EBITDA-based valuation
         current_ev_ebitda = enterprise_value / ebitda if ebitda and ebitda > 0 else None
-        target_ev_ebitda = (industry_ev_ebitda + current_ev_ebitda * 0.9) / 2 if current_ev_ebitda and 0 < current_ev_ebitda < 50 else industry_ev_ebitda
+        
+        if current_ev_ebitda and 0 < current_ev_ebitda < 50:
+            # Blend current and industry EV/EBITDA
+            ev_weight = 0.7 if cap_type == 'Large' else 0.6 if cap_type == 'Mid' else 0.5
+            target_ev_ebitda = (industry_ev_ebitda * ev_weight) + (current_ev_ebitda * (1 - ev_weight))
+        else:
+            target_ev_ebitda = industry_ev_ebitda
         
         if ebitda and ebitda > 0:
             fair_ev = ebitda * target_ev_ebitda
@@ -9989,10 +10223,8 @@ def calculate_valuations(info):
             fair_value_ev = None
             upside_ev = None
         
-        # Price to Book valuation
+        # Additional ratios
         pb_ratio = price / book_value if book_value and book_value > 0 else None
-        
-        # Price to Sales
         ps_ratio = market_cap / revenue if revenue and revenue > 0 else None
         
         return {
@@ -10012,7 +10244,8 @@ def calculate_valuations(info):
             'profit_margin': info.get('profitMargins', 0),
             '52w_high': info.get('fiftyTwoWeekHigh', 0),
             '52w_low': info.get('fiftyTwoWeekLow', 0),
-            'sector': mapped_sector
+            'cap_type': cap_type,
+            'benchmarks_used': benchmarks
         }
     except:
         return None
@@ -10020,42 +10253,61 @@ def calculate_valuations(info):
 # ============================================================================
 # SCREENING LOGIC
 # ============================================================================
-def calculate_fair_value(fundamentals, benchmarks):
-    """Calculate fair value using industry benchmarks"""
-    if not fundamentals or not benchmarks:
+def calculate_fair_value(fundamentals, industry, cap_type='Large'):
+    """Calculate fair value using enhanced industry-specific benchmarks"""
+    if not fundamentals or not fundamentals.get('price'):
         return None
     
     try:
+        # Get industry-specific benchmarks with cap-size adjustments
+        benchmarks = get_industry_benchmarks(industry, cap_type)
         fair_values = []
         
         # PE-based fair value
         if fundamentals.get('trailing_pe') and fundamentals.get('trailing_eps'):
-            pe_fair_value = fundamentals['trailing_eps'] * benchmarks['pe']
-            if pe_fair_value > 0:
-                fair_values.append(pe_fair_value)
+            if 0 < fundamentals['trailing_pe'] < 100:  # Sanity check
+                # Use blended approach: 70% industry benchmark, 30% historical
+                target_pe = (0.7 * benchmarks['pe']) + (0.3 * fundamentals['trailing_pe'])
+                pe_fair_value = fundamentals['trailing_eps'] * target_pe
+                if pe_fair_value > 0:
+                    fair_values.append(pe_fair_value)
         
-        # EV/EBITDA-based fair value (simplified)
-        if fundamentals.get('trailing_pe') and fundamentals['price']:
-            # Use PE as proxy for EV/EBITDA based valuation
-            ev_fair_value = fundamentals['price'] * (benchmarks['pe'] / fundamentals['trailing_pe'])
-            if ev_fair_value > 0:
-                fair_values.append(ev_fair_value)
+        # PB-based fair value (for asset-heavy industries)
+        if fundamentals.get('book_value') and benchmarks.get('pb'):
+            if fundamentals['book_value'] > 0:
+                pb_fair_value = fundamentals['book_value'] * benchmarks['pb']
+                if pb_fair_value > 0:
+                    fair_values.append(pb_fair_value)
         
-        return np.mean(fair_values) if fair_values else None
+        # For high-growth industries, give more weight to forward-looking metrics
+        if industry in ['Information Technology Services', 'Drug Manufacturers - Major', 'Renewable Energy']:
+            if fundamentals.get('forward_pe') and fundamentals.get('trailing_eps'):
+                if 0 < fundamentals['forward_pe'] < 50:
+                    forward_fair_value = fundamentals['trailing_eps'] * fundamentals['forward_pe'] * 1.1
+                    if forward_fair_value > 0:
+                        fair_values.append(forward_fair_value)
         
+        # Return weighted average if we have multiple estimates
+        if len(fair_values) >= 2:
+            # Weight PE more heavily for most industries
+            if len(fair_values) == 2:
+                return (fair_values[0] * 0.7 + fair_values[1] * 0.3)
+            else:
+                return np.mean(fair_values)
+        elif fair_values:
+            return fair_values[0]
+        else:
+            return None
+            
     except:
         return None
 
 def run_industry_screener(industry, strategy_type="undervalued", max_results=50):
-    """Run comprehensive screening for a specific industry"""
+    """Run comprehensive screening for a specific industry using enhanced benchmarks"""
     
     stocks = get_stocks_by_category(industry)
     if not stocks:
         return pd.DataFrame()
-    
-    # Get sector benchmarks for industry
-    sector = get_sector_for_industry(industry)
-    benchmarks = SECTOR_BENCHMARKS.get(sector, SECTOR_BENCHMARKS['Other'])
     
     results = []
     
@@ -10075,44 +10327,67 @@ def run_industry_screener(industry, strategy_type="undervalued", max_results=50)
         if not fundamentals or not fundamentals['price']:
             continue
         
-        # Calculate fair value
-        fair_value = calculate_fair_value(fundamentals, benchmarks)
+        # Calculate fair value using industry-specific benchmarks
+        fair_value = calculate_fair_value(fundamentals, industry, fundamentals.get('cap_type', 'Large'))
         if not fair_value or fair_value <= 0:
             continue
         
         # Calculate upside
         upside = ((fair_value - fundamentals['price']) / fundamentals['price']) * 100
         
-        # Apply strategy filters
+        # Get industry benchmarks for additional filtering
+        benchmarks = get_industry_benchmarks(industry, fundamentals.get('cap_type', 'Large'))
+        
+        # Apply strategy filters with enhanced criteria
         passes_filter = False
         
         if strategy_type == "undervalued":
+            # Basic undervalued filter
             if upside >= 15:  # At least 15% upside
                 passes_filter = True
         
-        elif strategy_type == "undervalued_supertrend":
-            if upside >= 15:
-                # Use 52-week position as proxy for technical strength
-                if fundamentals.get('pct_from_high') and fundamentals['pct_from_high'] >= -25:
+        elif strategy_type == "undervalued_near_high":
+            # Undervalued stocks trading near 52-week highs (strong momentum + value)
+            if upside >= 15:  # Must be undervalued
+                pct_from_high = fundamentals.get('pct_from_high', -100)
+                # Near 52-week high: within 5% of high
+                if pct_from_high >= -5:
                     passes_filter = True
+        
+        elif strategy_type == "undervalued_supertrend":
+            # Undervalued + Real SuperTrend bullish signal
+            if upside >= 15:  # Must be undervalued
+                # Get technical signals
+                with st.spinner(f"Analyzing technical signals for {ticker}..."):
+                    technical = get_technical_signals(ticker)
+                
+                if technical:
+                    # SuperTrend bullish (1) and additional confirmations
+                    if (technical['supertrend_signal'] == 1 and
+                        technical['above_sma20'] and 
+                        technical.get('price_vs_52w_high', 0) > 0.7):  # Not in deep correction
+                        passes_filter = True
         
         elif strategy_type == "undervalued_rsi_macd":
-            if upside >= 15:
-                # Use 52-week position as proxy for not overbought
-                if fundamentals.get('pct_from_high') and fundamentals['pct_from_high'] >= -30:
-                    passes_filter = True
+            # Undervalued + momentum indicators (proxy using price action)
+            if (upside >= 15 and
+                fundamentals.get('pct_from_high', -100) >= -30 and
+                fundamentals.get('volume', 0) > 0):  # Has volume
+                passes_filter = True
         
         elif strategy_type == "momentum":
-            # Momentum: stocks near 52W high
-            if (fundamentals.get('pct_from_high') and fundamentals['pct_from_high'] >= -10 and
-                fundamentals.get('trailing_pe') and fundamentals['trailing_pe'] <= benchmarks['pe'] * 1.5):
+            # Momentum: stocks near 52W high with reasonable valuation
+            if (fundamentals.get('pct_from_high', -100) >= -10 and
+                fundamentals.get('trailing_pe', 999) <= benchmarks['pe'] * 1.5):
                 passes_filter = True
         
         elif strategy_type == "quality":
-            # Quality: good ROE, reasonable PE, positive upside
-            if (fundamentals.get('roe') and fundamentals['roe'] > benchmarks['roe'] / 100 and
-                fundamentals.get('trailing_pe') and fundamentals['trailing_pe'] <= benchmarks['pe'] * 1.2 and
-                upside >= 5):
+            # Quality: good fundamentals with reasonable valuation
+            roe_threshold = benchmarks.get('roe', 15) / 100
+            if (fundamentals.get('roe', 0) > roe_threshold and
+                fundamentals.get('trailing_pe', 999) <= benchmarks['pe'] * 1.2 and
+                upside >= 5 and
+                fundamentals.get('debt_to_equity', 999) <= benchmarks.get('debt_equity', 1.0)):
                 passes_filter = True
         
         if not passes_filter:
@@ -10134,7 +10409,9 @@ def run_industry_screener(industry, strategy_type="undervalued", max_results=50)
             'From 52W High %': fundamentals['pct_from_high'],
             'From 52W Low %': fundamentals['pct_from_low'],
             'Beta': fundamentals['beta'],
-            'Dividend Yield %': fundamentals['dividend_yield'] * 100 if fundamentals['dividend_yield'] else None
+            'Dividend Yield %': fundamentals['dividend_yield'] * 100 if fundamentals['dividend_yield'] else None,
+            'Industry PE Benchmark': benchmarks['pe'],
+            'Industry EV/EBITDA Benchmark': benchmarks['ev_ebitda']
         }
         results.append(result)
         
@@ -10530,9 +10807,10 @@ def main():
         # Strategy selection  
         strategy_options = [
             ("undervalued", "🎯 Undervalued Stocks (15%+ upside)"),
-            ("undervalued_supertrend", "📈 Undervalued + Strong Position"),
-            ("undervalued_rsi_macd", "🔍 Undervalued + Momentum"),
-            ("momentum", "🚀 Momentum Stocks"),
+            ("undervalued_near_high", "🚀 Undervalued Near 52W High"),
+            ("undervalued_supertrend", "📈 Undervalued + SuperTrend Bullish"),
+            ("undervalued_rsi_macd", "🔍 Undervalued + Momentum Proxy"),
+            ("momentum", "⚡ Momentum Stocks"),
             ("quality", "💎 Quality Stocks")
         ]
         
@@ -10679,7 +10957,7 @@ def main():
                 st.error(f"❌ Error: {error if error else 'Failed to fetch stock data'}")
                 st.stop()
             
-            vals = calculate_valuations(info)
+            vals = calculate_valuations(info, stock_info['category'] if stock_info else None)
             if not vals:
                 st.error("❌ Unable to calculate valuations for this stock")
                 st.stop()
