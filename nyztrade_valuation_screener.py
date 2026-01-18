@@ -11,6 +11,200 @@ from functools import wraps
 from io import BytesIO
 import statistics
 
+# ============================================================================
+# TECHNICAL INDICATOR CALCULATIONS
+# ============================================================================
+
+def calculate_rsi(prices, period=14):
+    """Calculate RSI (Relative Strength Index)"""
+    try:
+        if len(prices) < period + 1:
+            return None
+        
+        delta = prices.diff()
+        gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
+        loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
+        
+        rs = gain / loss
+        rsi = 100 - (100 / (1 + rs))
+        return rsi.iloc[-1] if not rsi.empty else None
+    except:
+        return None
+
+def calculate_macd(prices, fast=12, slow=26, signal=9):
+    """Calculate MACD (Moving Average Convergence Divergence)"""
+    try:
+        if len(prices) < slow + signal:
+            return None, None, None
+        
+        exp1 = prices.ewm(span=fast).mean()
+        exp2 = prices.ewm(span=slow).mean()
+        macd = exp1 - exp2
+        signal_line = macd.ewm(span=signal).mean()
+        histogram = macd - signal_line
+        
+        return (
+            macd.iloc[-1] if not macd.empty else None,
+            signal_line.iloc[-1] if not signal_line.empty else None,
+            histogram.iloc[-1] if not histogram.empty else None
+        )
+    except:
+        return None, None, None
+
+def calculate_supertrend(high, low, close, period=10, multiplier=3.0):
+    """Calculate Supertrend indicator"""
+    try:
+        if len(close) < period + 1:
+            return None, None
+        
+        # Calculate True Range (TR)
+        tr1 = high - low
+        tr2 = abs(high - close.shift())
+        tr3 = abs(low - close.shift())
+        tr = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1)
+        
+        # Calculate Average True Range (ATR)
+        atr = tr.rolling(window=period).mean()
+        
+        # Calculate basic upper and lower bands
+        hl_avg = (high + low) / 2
+        upper_band = hl_avg + (multiplier * atr)
+        lower_band = hl_avg - (multiplier * atr)
+        
+        # Initialize Supertrend
+        supertrend = pd.Series(index=close.index, dtype=float)
+        trend = pd.Series(index=close.index, dtype=int)
+        
+        for i in range(period, len(close)):
+            if i == period:
+                supertrend.iloc[i] = upper_band.iloc[i]
+                trend.iloc[i] = 1
+            else:
+                # Upper band calculation
+                if upper_band.iloc[i] < supertrend.iloc[i-1] or close.iloc[i-1] > supertrend.iloc[i-1]:
+                    upper_band.iloc[i] = upper_band.iloc[i]
+                else:
+                    upper_band.iloc[i] = supertrend.iloc[i-1]
+                
+                # Lower band calculation
+                if lower_band.iloc[i] > supertrend.iloc[i-1] or close.iloc[i-1] < supertrend.iloc[i-1]:
+                    lower_band.iloc[i] = lower_band.iloc[i]
+                else:
+                    lower_band.iloc[i] = supertrend.iloc[i-1]
+                
+                # Supertrend calculation
+                if trend.iloc[i-1] == 1 and close.iloc[i] <= lower_band.iloc[i]:
+                    trend.iloc[i] = -1
+                    supertrend.iloc[i] = upper_band.iloc[i]
+                elif trend.iloc[i-1] == -1 and close.iloc[i] >= upper_band.iloc[i]:
+                    trend.iloc[i] = 1
+                    supertrend.iloc[i] = lower_band.iloc[i]
+                else:
+                    trend.iloc[i] = trend.iloc[i-1]
+                    supertrend.iloc[i] = upper_band.iloc[i] if trend.iloc[i] == 1 else lower_band.iloc[i]
+        
+        current_supertrend = supertrend.iloc[-1] if not supertrend.empty else None
+        current_trend = trend.iloc[-1] if not trend.empty else None  # 1 = bullish, -1 = bearish
+        
+        return current_supertrend, current_trend
+    except:
+        return None, None
+
+@st.cache_data(ttl=300)  # Cache for 5 minutes
+def get_technical_indicators(ticker, period_days=100):
+    """Fetch historical data and calculate technical indicators with caching"""
+    try:
+        # Fetch historical data
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=period_days)
+        
+        stock = yf.Ticker(ticker)
+        hist = stock.history(start=start_date, end=end_date, progress=False)
+        
+        if hist.empty or len(hist) < 30:
+            return None
+        
+        # Calculate indicators
+        rsi = calculate_rsi(hist['Close'])
+        macd, macd_signal, macd_histogram = calculate_macd(hist['Close'])
+        supertrend_value, supertrend_trend = calculate_supertrend(
+            hist['High'], hist['Low'], hist['Close']
+        )
+        
+        # Determine signals
+        rsi_signal = None
+        if rsi is not None:
+            if rsi < 30:
+                rsi_signal = 'oversold'  # Potential buy
+            elif rsi > 70:
+                rsi_signal = 'overbought'  # Potential sell
+            elif 40 <= rsi <= 60:
+                rsi_signal = 'neutral'
+            elif 30 <= rsi < 40:
+                rsi_signal = 'bullish'  # Recovering from oversold
+            elif 60 < rsi <= 70:
+                rsi_signal = 'bearish'  # Approaching overbought
+        
+        macd_signal_trend = None
+        if macd is not None and macd_signal is not None:
+            if macd > macd_signal:
+                macd_signal_trend = 'bullish'
+            else:
+                macd_signal_trend = 'bearish'
+        
+        supertrend_signal = None
+        if supertrend_trend is not None:
+            if supertrend_trend == 1:
+                supertrend_signal = 'bullish'
+            else:
+                supertrend_signal = 'bearish'
+        
+        return {
+            'rsi': rsi,
+            'rsi_signal': rsi_signal,
+            'macd': macd,
+            'macd_signal': macd_signal,
+            'macd_histogram': macd_histogram,
+            'macd_trend': macd_signal_trend,
+            'supertrend_value': supertrend_value,
+            'supertrend_trend': supertrend_trend,
+            'supertrend_signal': supertrend_signal,
+            'current_price': hist['Close'].iloc[-1] if not hist.empty else None
+        }
+    
+    except Exception as e:
+        return None
+
+def get_quick_technical_signals(ticker):
+    """Quick technical signals for screening (lighter version)"""
+    try:
+        # Get only last 60 days for quicker processing
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=60)
+        
+        stock = yf.Ticker(ticker)
+        hist = stock.history(start=start_date, end=end_date, progress=False)
+        
+        if hist.empty or len(hist) < 20:
+            return None
+        
+        # Quick RSI
+        rsi = calculate_rsi(hist['Close'], period=14)
+        
+        # Quick Supertrend
+        supertrend_value, supertrend_trend = calculate_supertrend(
+            hist['High'], hist['Low'], hist['Close'], period=7, multiplier=2.5
+        )
+        
+        return {
+            'rsi_bullish': rsi is not None and (rsi < 70 and rsi > 25),  # Not overbought, not extremely oversold
+            'supertrend_bullish': supertrend_trend == 1,
+            'rsi_value': rsi,
+            'supertrend_signal': 'bullish' if supertrend_trend == 1 else 'bearish'
+        }
+    except:
+        return None
+
 st.set_page_config(
     page_title="NYZTrade Dynamic Screener", 
     page_icon="📊", 
@@ -1162,7 +1356,7 @@ def run_value_screener(screener_config, criteria, limit=50):
                     pct_from_low = ((price - low_52w) / low_52w * 100)
                 
                 # Apply strategy-specific filters
-                passes = apply_strategy_filters(screener_config, valuation_data, pe_ratio, roe, pct_from_high, pct_from_low, benchmarks)
+                passes = apply_strategy_filters(screener_config, valuation_data, pe_ratio, roe, pct_from_high, pct_from_low, benchmarks, ticker)
                 
                 if passes:
                     results.append({
@@ -1200,8 +1394,8 @@ def run_value_screener(screener_config, criteria, limit=50):
     
     return pd.DataFrame(results)
 
-def apply_strategy_filters(screener_config, valuation_data, pe_ratio, roe, pct_from_high, pct_from_low, benchmarks):
-    """Apply strategy-specific filters including technical screeners"""
+def apply_strategy_filters(screener_config, valuation_data, pe_ratio, roe, pct_from_high, pct_from_low, benchmarks, ticker=None):
+    """Apply strategy-specific filters including real technical screeners"""
     
     strategy = screener_config.get('strategy_type', '')
     passes = True
@@ -1245,24 +1439,50 @@ def apply_strategy_filters(screener_config, valuation_data, pe_ratio, roe, pct_f
         if not pct_from_low or pct_from_low < screener_config['from_52w_low_min']:
             passes = False
     
-    # Technical screener filters (simulated using 52-week data)
-    if passes and strategy == 'undervalued_supertrend':
-        # Supertrend simulation: Stock should be in upper part of 52-week range (bullish trend)
-        if pct_from_high is not None and pct_from_low is not None:
-            # Calculate position in 52-week range (0-100%)
-            range_position = pct_from_low / (pct_from_high + pct_from_low) * 100 if (pct_from_high + pct_from_low) > 0 else 0
-            # For bullish supertrend, stock should be in upper 60% of range
-            if range_position < 40:  # Below 40% means not in bullish trend
-                passes = False
-    
-    if passes and strategy == 'undervalued_rsi_macd':
-        # RSI/MACD simulation: Stock should show recovery from lows but not overbought
-        if pct_from_high is not None and pct_from_low is not None:
-            # Calculate position in 52-week range
-            range_position = pct_from_low / (pct_from_high + pct_from_low) * 100 if (pct_from_high + pct_from_low) > 0 else 0
-            # For bullish RSI/MACD: should be between 30-80% of range (not oversold, not overbought)
-            if range_position < 20 or range_position > 85:
-                passes = False
+    # Real technical screener filters (optimized for performance)
+    if passes and strategy in ['undervalued_supertrend', 'undervalued_rsi_macd']:
+        if ticker:
+            try:
+                # Use quick technical indicators for screening performance
+                quick_technical = get_quick_technical_signals(ticker)
+                
+                if quick_technical:
+                    if strategy == 'undervalued_supertrend':
+                        # Real Supertrend filter: must be in bullish trend
+                        if not quick_technical.get('supertrend_bullish', False):
+                            passes = False
+                    
+                    elif strategy == 'undervalued_rsi_macd':
+                        # Real RSI filter: should be bullish (not overbought, recovering)
+                        if not quick_technical.get('rsi_bullish', False):
+                            passes = False
+                else:
+                    # If technical data unavailable, fall back to 52-week range proxy
+                    if strategy == 'undervalued_supertrend':
+                        if pct_from_high is not None and pct_from_low is not None:
+                            range_position = pct_from_low / (pct_from_high + pct_from_low) * 100 if (pct_from_high + pct_from_low) > 0 else 0
+                            if range_position < 40:  # Below 40% means not in bullish trend
+                                passes = False
+                    
+                    elif strategy == 'undervalued_rsi_macd':
+                        if pct_from_high is not None and pct_from_low is not None:
+                            range_position = pct_from_low / (pct_from_high + pct_from_low) * 100 if (pct_from_high + pct_from_low) > 0 else 0
+                            if range_position < 20 or range_position > 85:
+                                passes = False
+                        
+            except:
+                # If error in technical calculation, fall back to 52-week proxy
+                if strategy == 'undervalued_supertrend':
+                    if pct_from_high is not None and pct_from_low is not None:
+                        range_position = pct_from_low / (pct_from_high + pct_from_low) * 100 if (pct_from_high + pct_from_low) > 0 else 0
+                        if range_position < 40:
+                            passes = False
+                
+                elif strategy == 'undervalued_rsi_macd':
+                    if pct_from_high is not None and pct_from_low is not None:
+                        range_position = pct_from_low / (pct_from_high + pct_from_low) * 100 if (pct_from_high + pct_from_low) > 0 else 0
+                        if range_position < 20 or range_position > 85:
+                            passes = False
     
     return passes
 
@@ -2012,247 +2232,292 @@ elif mode == "📈 Individual Stock Analysis":
             analysis, error = analyze_individual_stock_dynamic(ticker)
         
         if analysis:
-            # Enhanced header with company info
-            st.markdown(f'''
-            <div style="background: linear-gradient(135deg, rgba(124, 58, 237, 0.15), rgba(139, 92, 246, 0.15)); 
-                       border: 2px solid rgba(124, 58, 237, 0.3); border-radius: 20px; padding: 30px; margin: 30px 0;
-                       box-shadow: 0 10px 40px rgba(124, 58, 237, 0.1);">
-                <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 20px;">
-                    <div style="flex: 1; min-width: 300px;">
-                        <div style="font-size: 2.2rem; font-weight: bold; color: #7c3aed; margin-bottom: 8px;">
-                            {analysis['company']}
-                        </div>
-                        <div style="display: flex; flex-wrap: wrap; gap: 15px; font-size: 1rem;">
-                            <span style="background: rgba(124, 58, 237, 0.2); color: #7c3aed; padding: 6px 12px; 
-                                        border-radius: 20px; font-weight: 500;">
-                                🏷️ {analysis['ticker']}
-                            </span>
-                            <span style="background: rgba(59, 130, 246, 0.2); color: #3b82f6; padding: 6px 12px; 
-                                        border-radius: 20px; font-weight: 500;">
-                                🏢 {analysis['sector']}
-                            </span>
-                            <span style="background: rgba(16, 185, 129, 0.2); color: #10b981; padding: 6px 12px; 
-                                        border-radius: 20px; font-weight: 500;">
-                                💼 {analysis['cap_type']}
-                            </span>
-                        </div>
-                    </div>
-                    <div style="text-align: center; min-width: 150px;">
-                        <div style="background: rgba(124, 58, 237, 0.2); border-radius: 15px; padding: 15px;">
-                            <div style="font-size: 0.9rem; color: #7c3aed; font-weight: 600; margin-bottom: 5px;">
-                                ANALYSIS STATUS
-                            </div>
-                            <div style="font-size: 1.1rem; color: #059669; font-weight: bold;">
-                                🧮 DYNAMIC READY
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            ''', unsafe_allow_html=True)
+            # Clean, professional header
+            st.markdown(f"# {analysis['company']}")
+            st.markdown(f"**{analysis['ticker']} • {analysis['sector']} • {analysis['cap_type']} Cap**")
             
-            # Enhanced dynamic benchmarks comparison - Fixed for mobile
-            benchmarks = analysis['dynamic_benchmarks']
-            if benchmarks:
-                st.markdown("### 📊 Live Sector Benchmarks vs Stock Metrics")
-                
-                col1, col2, col3 = st.columns(3)
-                
-                with col1:
-                    st.metric(
-                        label="💰 PE Ratio Analysis",
-                        value=f"{analysis['trailing_pe']:.2f}x",
-                        delta=f"Sector: {benchmarks.get('pe', 0):.2f}x"
-                    )
-                    st.caption(f"Multiple: {(analysis['trailing_pe']/benchmarks.get('pe', 1)):.2f}x sector avg")
-                
-                with col2:
-                    st.metric(
-                        label="📚 PB Ratio Analysis", 
-                        value=f"{analysis['pb_ratio']:.2f}x",
-                        delta=f"Sector: {benchmarks.get('pb', 0):.2f}x"
-                    )
-                    st.caption(f"Multiple: {(analysis['pb_ratio']/benchmarks.get('pb', 1)):.2f}x sector avg")
-                
-                with col3:
-                    roe_diff = ((analysis['roe']*100) - benchmarks.get('roe', 0))
-                    st.metric(
-                        label="🌱 ROE Comparison",
-                        value=f"{(analysis['roe']*100):.1f}%",
-                        delta=f"{roe_diff:+.1f}pp vs sector"
-                    )
-                    st.caption(f"Sector Avg: {benchmarks.get('roe', 0):.1f}%")
-            
-            # Enhanced valuation summary with mobile-friendly components
-            st.markdown("### 💎 Dynamic Valuation Analysis")
-            
-            col1, col2 = st.columns([3, 2])
+            # Key metrics row - most important information first
+            col1, col2, col3, col4 = st.columns(4)
             
             with col1:
-                fair_value = analysis['avg_fair_value'] if analysis['avg_fair_value'] else analysis['price']
-                upside = analysis['avg_upside'] if analysis['avg_upside'] else 0
-                
-                # Main valuation metrics
-                st.subheader("🧮 Dynamic Valuation Summary")
-                st.caption(f"Based on real-time {analysis['sector']} sector benchmarks")
-                
-                # Two column layout for fair value and current price
-                subcol1, subcol2 = st.columns(2)
-                
-                with subcol1:
-                    st.metric(
-                        label="Dynamic Fair Value",
-                        value=f"₹{fair_value:,.2f}",
-                        help="Calculated using real-time sector benchmarks"
-                    )
-                
-                with subcol2:
-                    st.metric(
-                        label="Current Market Price", 
-                        value=f"₹{analysis['price']:,.2f}",
-                        help="Latest market price"
-                    )
-                
-                # Upside potential display
-                upside_color = "normal" if upside > 0 else "inverse"
-                upside_emoji = "🚀" if upside > 0 else "⚠️"
-                upside_text = "Upside Potential" if upside > 0 else "Downside Risk"
-                
                 st.metric(
-                    label=f"{upside_emoji} {upside_text} (Dynamic Calculation)",
-                    value=f"{upside:+.1f}%",
-                    delta=f"vs current price"
+                    "Current Price",
+                    f"₹{analysis['price']:,.2f}",
+                    help="Latest market price"
                 )
             
             with col2:
-                # Enhanced recommendation with dynamic context - Mobile friendly
+                fair_value = analysis['avg_fair_value'] if analysis['avg_fair_value'] else analysis['price']
+                upside = analysis['avg_upside'] if analysis['avg_upside'] else 0
+                delta_color = "normal" if upside > 0 else "inverse"
+                st.metric(
+                    "Fair Value", 
+                    f"₹{fair_value:,.2f}",
+                    delta=f"{upside:+.1f}% upside",
+                    delta_color=delta_color,
+                    help="Dynamic calculation using sector benchmarks"
+                )
+            
+            with col3:
+                # Recommendation
+                benchmarks = analysis['dynamic_benchmarks']
                 pe_ratio = analysis['trailing_pe'] / benchmarks.get('pe', 1) if analysis['trailing_pe'] and benchmarks else 1
                 
                 if upside > 25 and pe_ratio < 1.2:
-                    rec_text, rec_icon = "Strong Buy", "🚀"
+                    rec_text, rec_emoji = "Strong Buy", "🚀"
                 elif upside > 15 and pe_ratio < 1.3:
-                    rec_text, rec_icon = "Buy", "✅"
-                elif upside > 0 and pe_ratio < 1.5:
-                    rec_text, rec_icon = "Hold", "📥"
-                elif upside > -10:
-                    rec_text, rec_icon = "Weak Hold", "⏸️"
+                    rec_text, rec_emoji = "Buy", "✅"
+                elif upside > 0:
+                    rec_text, rec_emoji = "Hold", "📊"
                 else:
-                    rec_text, rec_icon = "Avoid", "⚠️"
+                    rec_text, rec_emoji = "Avoid", "⚠️"
                 
-                # Use streamlit info/success/warning/error boxes for recommendations
-                rec_message = f"""
-                **{rec_icon} {rec_text}**
-                
-                **Expected:** {upside:+.1f}%  
-                **PE:** {pe_ratio:.2f}x sector avg  
-                **Risk Level:** {"Low" if upside > 15 else "Medium" if upside > 0 else "High"}
-                """
-                
-                if rec_text in ["Strong Buy", "Buy"]:
-                    st.success(rec_message)
-                elif rec_text == "Hold":
-                    st.info(rec_message)
-                elif rec_text == "Weak Hold":
-                    st.warning(rec_message)
-                else:
-                    st.error(rec_message)
-            
-            # Enhanced key metrics with mobile-friendly grid
-            st.markdown("### 📊 Key Financial Metrics")
-            
-            # Mobile responsive: 3 columns on desktop, 2 on mobile
-            col1, col2, col3 = st.columns(3)
-            col4, col5, col6 = st.columns(3)
-            
-            metrics_data = [
-                (col1, "💰", f"₹{analysis['price']:,.2f}", "Current Price"),
-                (col2, "📈", f"{analysis['trailing_pe']:.2f}" if analysis['trailing_pe'] else "N/A", "P/E Ratio"),
-                (col3, "📚", f"{analysis['pb_ratio']:.2f}" if analysis['pb_ratio'] else "N/A", "P/B Ratio"),
-                (col4, "🏦", f"₹{analysis['market_cap']/10000000:,.0f}Cr" if analysis['market_cap'] else "N/A", "Market Cap"),
-                (col5, "💵", f"{analysis['dividend_yield']*100:.2f}%" if analysis['dividend_yield'] else "N/A", "Dividend Yield"),
-                (col6, "📊", f"{analysis['beta']:.2f}" if analysis['beta'] else "N/A", "Beta")
-            ]
-            
-            for col, icon, value, label in metrics_data:
-                with col:
-                    st.metric(
-                        label=f"{icon} {label}",
-                        value=value,
-                        help=f"Latest {label.lower()} data"
-                    )
-            
-            # Enhanced valuation methods section
-            if analysis['upside_pe'] is not None or analysis['upside_ev'] is not None:
-                st.markdown("### 🎯 Detailed Valuation Methods")
-                
-                st.markdown('''
-                <div style="background: rgba(124, 58, 237, 0.08); border: 1px solid rgba(124, 58, 237, 0.2); 
-                           border-radius: 15px; padding: 20px; margin: 20px 0;">
-                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
-                        <span style="font-size: 1.5rem;">🧮</span>
-                        <span style="font-size: 1.1rem; font-weight: 600; color: #7c3aed;">
-                            Dynamic Valuation Methodologies
-                        </span>
-                    </div>
-                    <p style="color: #6b7280; font-size: 0.95rem; margin-bottom: 0;">
-                        Both methods use real-time sector benchmarks for accurate fair value calculation
-                    </p>
-                </div>
-                ''', unsafe_allow_html=True)
-                
-                fig_gauge = create_gauge_chart(
-                    analysis['upside_pe'] if analysis['upside_pe'] else 0,
-                    analysis['upside_ev'] if analysis['upside_ev'] else 0
+                st.metric(
+                    "Recommendation",
+                    f"{rec_emoji} {rec_text}",
+                    help=f"PE: {pe_ratio:.2f}x sector avg"
                 )
-                st.plotly_chart(fig_gauge, use_container_width=True)
             
-            # Enhanced 52-week performance section - Mobile friendly
-            if analysis['pct_from_high'] is not None:
-                st.markdown("### 📍 52-Week Performance Analysis")
+            with col4:
+                # 52-week position indicator
+                if analysis['pct_from_high'] is not None:
+                    current_position = ((analysis['price'] - analysis['low_52w']) / (analysis['high_52w'] - analysis['low_52w'])) * 100
+                    position_emoji = "🟢" if current_position > 75 else "🟡" if current_position > 50 else "🟠" if current_position > 25 else "🔴"
+                    st.metric(
+                        "52W Position",
+                        f"{position_emoji} {current_position:.0f}%",
+                        help="Position in 52-week range"
+                    )
+                else:
+                    st.metric("52W Position", "N/A")
+            
+            st.markdown("---")
+            
+            # Organized content in tabs for cleaner layout
+            tab1, tab2, tab3, tab4 = st.tabs(["📊 Sector Analysis", "📈 Technical Indicators", "📍 Performance", "💼 Financials"])
+            
+            with tab1:
+                if benchmarks:
+                    st.markdown("#### Sector Benchmark Comparison")
+                    
+                    col1, col2, col3 = st.columns(3)
+                    
+                    with col1:
+                        pe_delta = analysis['trailing_pe'] - benchmarks.get('pe', 0) if analysis['trailing_pe'] else 0
+                        st.metric(
+                            "PE Ratio",
+                            f"{analysis['trailing_pe']:.2f}x" if analysis['trailing_pe'] else "N/A",
+                            delta=f"{pe_delta:+.2f}x vs sector",
+                            delta_color="inverse" if pe_delta > 0 else "normal"
+                        )
+                        st.caption(f"Sector Average: {benchmarks.get('pe', 0):.2f}x")
+                    
+                    with col2:
+                        pb_delta = analysis['pb_ratio'] - benchmarks.get('pb', 0) if analysis['pb_ratio'] else 0
+                        st.metric(
+                            "PB Ratio",
+                            f"{analysis['pb_ratio']:.2f}x" if analysis['pb_ratio'] else "N/A",
+                            delta=f"{pb_delta:+.2f}x vs sector",
+                            delta_color="inverse" if pb_delta > 0 else "normal"
+                        )
+                        st.caption(f"Sector Average: {benchmarks.get('pb', 0):.2f}x")
+                    
+                    with col3:
+                        roe_delta = ((analysis['roe']*100) - benchmarks.get('roe', 0)) if analysis['roe'] else 0
+                        st.metric(
+                            "ROE",
+                            f"{(analysis['roe']*100):.1f}%" if analysis['roe'] else "N/A",
+                            delta=f"{roe_delta:+.1f}pp vs sector",
+                            delta_color="normal" if roe_delta > 0 else "inverse"
+                        )
+                        st.caption(f"Sector Average: {benchmarks.get('roe', 0):.1f}%")
+                    
+                    # Valuation gauge charts (if available)
+                    if analysis['upside_pe'] is not None or analysis['upside_ev'] is not None:
+                        st.markdown("---")
+                        st.markdown("#### Valuation Methods")
+                        
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            if analysis['upside_pe'] is not None:
+                                st.metric("PE-based Upside", f"{analysis['upside_pe']:.1f}%")
+                        with col2:
+                            if analysis['upside_ev'] is not None:
+                                st.metric("EV/EBITDA-based Upside", f"{analysis['upside_ev']:.1f}%")
+                        
+                        # Show gauge chart
+                        fig_gauge = create_gauge_chart(
+                            analysis['upside_pe'] if analysis['upside_pe'] else 0,
+                            analysis['upside_ev'] if analysis['upside_ev'] else 0
+                        )
+                        st.plotly_chart(fig_gauge, use_container_width=True)
+            
+            with tab2:
+                st.markdown("#### Real-Time Technical Indicators")
+                
+                with st.spinner("📊 Calculating technical indicators..."):
+                    technical_data = get_technical_indicators(analysis['ticker'])
+                
+                if technical_data:
+                    col1, col2, col3 = st.columns(3)
+                    
+                    with col1:
+                        rsi = technical_data.get('rsi')
+                        rsi_signal = technical_data.get('rsi_signal', 'unknown')
+                        
+                        if rsi is not None:
+                            # Simple color coding for RSI
+                            if rsi < 30:
+                                rsi_emoji, rsi_text = "🟢", "Oversold"
+                            elif rsi > 70:
+                                rsi_emoji, rsi_text = "🔴", "Overbought" 
+                            else:
+                                rsi_emoji, rsi_text = "🟡", "Neutral"
+                            
+                            st.metric(
+                                "RSI (14)",
+                                f"{rsi:.1f}",
+                                delta=f"{rsi_emoji} {rsi_text}",
+                                help="RSI < 30: Oversold, > 70: Overbought"
+                            )
+                        else:
+                            st.metric("RSI (14)", "N/A")
+                    
+                    with col2:
+                        macd_trend = technical_data.get('macd_trend', 'unknown')
+                        macd = technical_data.get('macd')
+                        
+                        if macd is not None:
+                            trend_emoji = "🟢" if macd_trend == "bullish" else "🔴"
+                            st.metric(
+                                "MACD",
+                                f"{macd:.3f}",
+                                delta=f"{trend_emoji} {macd_trend.title()}",
+                                delta_color="normal" if macd_trend == "bullish" else "inverse"
+                            )
+                        else:
+                            st.metric("MACD", "N/A")
+                    
+                    with col3:
+                        supertrend_signal = technical_data.get('supertrend_signal', 'unknown')
+                        supertrend_value = technical_data.get('supertrend_value')
+                        
+                        if supertrend_value is not None:
+                            trend_emoji = "🟢" if supertrend_signal == "bullish" else "🔴"
+                            distance = ((analysis['price'] - supertrend_value) / supertrend_value) * 100
+                            st.metric(
+                                "Supertrend",
+                                f"₹{supertrend_value:.2f}",
+                                delta=f"{trend_emoji} {supertrend_signal.title()} ({distance:+.1f}%)",
+                                delta_color="normal" if supertrend_signal == "bullish" else "inverse"
+                            )
+                        else:
+                            st.metric("Supertrend", "N/A")
+                    
+                    # Technical summary
+                    st.markdown("---")
+                    bullish_signals = sum([
+                        1 for signal in [
+                            technical_data.get('rsi_signal') in ['bullish', 'oversold'],
+                            technical_data.get('macd_trend') == 'bullish',
+                            technical_data.get('supertrend_signal') == 'bullish'
+                        ] if signal
+                    ])
+                    
+                    total_signals = sum([
+                        1 for signal in [
+                            technical_data.get('rsi_signal') is not None,
+                            technical_data.get('macd_trend') is not None,
+                            technical_data.get('supertrend_signal') is not None
+                        ] if signal
+                    ])
+                    
+                    if total_signals > 0:
+                        signal_strength = bullish_signals / total_signals
+                        if signal_strength >= 0.67:
+                            st.success(f"🟢 Strong Bullish Signals ({bullish_signals}/{total_signals})")
+                        elif signal_strength >= 0.34:
+                            st.info(f"🟡 Mixed Signals ({bullish_signals}/{total_signals})")
+                        else:
+                            st.error(f"🔴 Bearish Signals ({bullish_signals}/{total_signals})")
+                    else:
+                        st.info("📊 Technical data insufficient for analysis")
+                        
+                else:
+                    st.warning("⚠️ Technical indicators not available")
+                    st.caption("Requires sufficient historical price data")
+            
+            with tab3:
+                st.markdown("#### 52-Week Performance Analysis")
+                
+                if analysis['pct_from_high'] is not None:
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        st.metric(
+                            "From 52W High",
+                            f"{-analysis['pct_from_high']:+.1f}%",
+                            delta=f"High: ₹{analysis['high_52w']:,.2f}",
+                            delta_color="off"
+                        )
+                        
+                        st.metric(
+                            "From 52W Low", 
+                            f"{analysis['pct_from_low']:+.1f}%",
+                            delta=f"Low: ₹{analysis['low_52w']:,.2f}",
+                            delta_color="off"
+                        )
+                    
+                    with col2:
+                        # Visual progress bar
+                        st.markdown("**52-Week Range Position**")
+                        current_position = ((analysis['price'] - analysis['low_52w']) / (analysis['high_52w'] - analysis['low_52w'])) * 100
+                        st.progress(current_position / 100)
+                        st.caption(f"**{current_position:.1f}%** of 52-week range")
+                        
+                        # Performance status
+                        if current_position > 80:
+                            st.success("🟢 Very Strong Position")
+                        elif current_position > 60:
+                            st.success("🟢 Strong Position")
+                        elif current_position > 40:
+                            st.info("🟡 Moderate Position")
+                        elif current_position > 20:
+                            st.warning("🟠 Weak Position")
+                        else:
+                            st.error("🔴 Very Weak Position")
+                else:
+                    st.info("📊 52-week data not available")
+            
+            with tab4:
+                st.markdown("#### Financial Details")
                 
                 col1, col2 = st.columns(2)
                 
                 with col1:
                     st.metric(
-                        label="📉 Distance from 52W High",
-                        value=f"{-analysis['pct_from_high']:+.1f}%",
-                        delta=f"₹{analysis['high_52w']:,.2f}",
-                        delta_color="inverse"
+                        "Market Cap", 
+                        f"₹{analysis['market_cap']/10000000:,.0f} Cr" if analysis['market_cap'] else "N/A"
                     )
                     
                     st.metric(
-                        label="📈 Distance from 52W Low", 
-                        value=f"{analysis['pct_from_low']:+.1f}%",
-                        delta=f"₹{analysis['low_52w']:,.2f}",
-                        delta_color="normal"
+                        "Dividend Yield",
+                        f"{analysis['dividend_yield']*100:.2f}%" if analysis['dividend_yield'] else "N/A"
                     )
                 
                 with col2:
-                    # 52-week range position calculation
-                    current_position = ((analysis['price'] - analysis['low_52w']) / (analysis['high_52w'] - analysis['low_52w'])) * 100
-                    
-                    st.subheader("📊 52-Week Range Position")
-                    
-                    # Progress bar representation
-                    st.progress(current_position / 100)
-                    st.caption(f"**Current Position:** {current_position:.1f}% of 52-week range")
-                    
-                    # Range information
                     st.metric(
-                        label="Current Price Position",
-                        value=f"₹{analysis['price']:,.2f}",
-                        help=f"Range: ₹{analysis['low_52w']:,.2f} - ₹{analysis['high_52w']:,.2f}"
+                        "Beta",
+                        f"{analysis['beta']:.2f}" if analysis['beta'] else "N/A",
+                        help="Beta < 1: Less volatile than market"
                     )
                     
-                    # Performance indicator
-                    if current_position > 75:
-                        st.success("🟢 Near 52-week high - Strong momentum")
-                    elif current_position > 50:
-                        st.info("🟡 Above midpoint - Moderate performance") 
-                    elif current_position > 25:
-                        st.warning("🟠 Below midpoint - Weak performance")
-                    else:
-                        st.error("🔴 Near 52-week low - Poor performance")
+                    # Add profit margin if available
+                    if analysis.get('profit_margin'):
+                        st.metric(
+                            "Profit Margin",
+                            f"{analysis['profit_margin']*100:.1f}%"
+                        )
         
         elif error:
             st.error(f"❌ Error analyzing {ticker}: {error}")
