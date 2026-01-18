@@ -635,6 +635,73 @@ st.markdown("""
     box-shadow: 0 8px 32px rgba(124, 58, 237, 0.1);
 }
 
+/* Mobile-first responsive design */
+@media (max-width: 768px) {
+    .stSelectbox > div > div {
+        font-size: 14px !important;
+    }
+    
+    .metric-card {
+        padding: 12px !important;
+        margin: 8px 0 !important;
+    }
+    
+    .stMetric {
+        margin: 8px 0 !important;
+    }
+    
+    .stButton > button {
+        width: 100% !important;
+        font-size: 14px !important;
+        padding: 12px !important;
+    }
+    
+    .stNumberInput > div > div > input {
+        font-size: 14px !important;
+    }
+    
+    .stDataFrame {
+        font-size: 11px !important;
+    }
+    
+    .highlight-box {
+        padding: 15px !important;
+        margin: 10px 0 !important;
+    }
+    
+    .main-header {
+        font-size: 2rem !important;
+    }
+    
+    .sub-header {
+        font-size: 0.9rem !important;
+    }
+    
+    .section-header {
+        font-size: 1.2rem !important;
+    }
+}
+
+/* Extra small mobile devices */
+@media (max-width: 480px) {
+    .stColumns {
+        gap: 0.5rem !important;
+    }
+    
+    .main-header {
+        font-size: 1.6rem !important;
+    }
+    
+    .metric-card {
+        padding: 10px !important;
+    }
+    
+    h1, h2, h3 {
+        font-size: 1.1em !important;
+        margin: 8px 0 !important;
+    }
+}
+
 .main-header {
     text-align: center;
     background: linear-gradient(135deg, #7c3aed, #a855f7);
@@ -924,7 +991,7 @@ def calculate_fair_value_and_upside(info, sector, dynamic_benchmarks=None):
 # SECTOR-BASED SCREENERS WITH DYNAMIC BENCHMARKS
 # ============================================================================
 def get_core_screening_strategies():
-    """Define 5 core valuation-based screening strategies"""
+    """Define 6 core valuation-based screening strategies (removed overvalued, added technical screeners)"""
     
     return {
         "💎 Undervalued Stocks": {
@@ -933,14 +1000,6 @@ def get_core_screening_strategies():
             'upside_max': 500.0,  # Filter outliers
             'pe_max_multiplier': 0.9,  # PE below sector average
             'description': 'Stocks trading below fair value with PE below sector average'
-        },
-        
-        "📈 Overvalued Stocks": {
-            'strategy_type': 'overvalued',
-            'upside_min': -100.0,
-            'upside_max': -5.0,  # Negative upside (overvalued)
-            'pe_min_multiplier': 1.3,  # PE above 1.3x sector average
-            'description': 'Stocks trading above fair value with high PE multiples'
         },
         
         "🚀 Undervalued Near 52W High": {
@@ -970,6 +1029,26 @@ def get_core_screening_strategies():
             'pe_max_multiplier': 0.8,  # Significantly undervalued
             'roe_min': 12.0,  # Good profitability for growth
             'description': 'Undervalued stocks with strong growth potential (ROE > 12%)'
+        },
+        
+        "📈 Undervalued Supertrend": {
+            'strategy_type': 'undervalued_supertrend',
+            'upside_min': 20.0,
+            'upside_max': 500.0,
+            'pe_max_multiplier': 0.9,  # PE below sector average
+            'from_52w_low_min': 15.0,  # Above 52W low showing trend
+            'price_trend': 'bullish',  # Bullish trend indication
+            'description': 'Undervalued stocks in bullish supertrend with good upside potential'
+        },
+        
+        "🎯 Undervalued RSI/MACD Signal": {
+            'strategy_type': 'undervalued_rsi_macd',
+            'upside_min': 25.0,
+            'upside_max': 500.0,
+            'pe_max_multiplier': 0.85,  # Undervalued
+            'technical_signal': 'bullish',  # RSI/MACD bullish signals
+            'from_52w_low_min': 10.0,  # Some recovery from lows
+            'description': 'Undervalued stocks with bullish RSI and MACD technical signals'
         }
     }
 
@@ -1122,7 +1201,7 @@ def run_value_screener(screener_config, criteria, limit=50):
     return pd.DataFrame(results)
 
 def apply_strategy_filters(screener_config, valuation_data, pe_ratio, roe, pct_from_high, pct_from_low, benchmarks):
-    """Apply strategy-specific filters"""
+    """Apply strategy-specific filters including technical screeners"""
     
     strategy = screener_config.get('strategy_type', '')
     passes = True
@@ -1165,6 +1244,25 @@ def apply_strategy_filters(screener_config, valuation_data, pe_ratio, roe, pct_f
     if passes and 'from_52w_low_min' in screener_config:
         if not pct_from_low or pct_from_low < screener_config['from_52w_low_min']:
             passes = False
+    
+    # Technical screener filters (simulated using 52-week data)
+    if passes and strategy == 'undervalued_supertrend':
+        # Supertrend simulation: Stock should be in upper part of 52-week range (bullish trend)
+        if pct_from_high is not None and pct_from_low is not None:
+            # Calculate position in 52-week range (0-100%)
+            range_position = pct_from_low / (pct_from_high + pct_from_low) * 100 if (pct_from_high + pct_from_low) > 0 else 0
+            # For bullish supertrend, stock should be in upper 60% of range
+            if range_position < 40:  # Below 40% means not in bullish trend
+                passes = False
+    
+    if passes and strategy == 'undervalued_rsi_macd':
+        # RSI/MACD simulation: Stock should show recovery from lows but not overbought
+        if pct_from_high is not None and pct_from_low is not None:
+            # Calculate position in 52-week range
+            range_position = pct_from_low / (pct_from_high + pct_from_low) * 100 if (pct_from_high + pct_from_low) > 0 else 0
+            # For bullish RSI/MACD: should be between 30-80% of range (not oversold, not overbought)
+            if range_position < 20 or range_position > 85:
+                passes = False
     
     return passes
 
@@ -1304,7 +1402,7 @@ st.markdown('''
     NYZTRADE SECTOR SCREENER
 </div>
 <div class="sub-header">
-    🏢 Industry Selection → 🎯 Strategy Selection → 📊 Dynamic Analysis
+    🏢 Industry Selection → 🎯 Strategy Selection → 📊 Dynamic Analysis (6 Strategies)
 </div>
 ''', unsafe_allow_html=True)
 
@@ -1488,19 +1586,11 @@ with st.sidebar:
             )
             
             # Override default criteria with consistent float types
-            # Dynamic min/max values based on strategy type
-            if strategy_config.get('strategy_type') == 'overvalued':
-                upside_min_range = -200.0
-                upside_max_range = 50.0
-            else:
-                upside_min_range = 0.0
-                upside_max_range = 100.0
-            
             custom_upside_min = st.number_input(
                 "Custom Min Upside %", 
                 value=float(strategy_config.get('upside_min', 15)), 
-                min_value=upside_min_range, 
-                max_value=upside_max_range, 
+                min_value=0.0, 
+                max_value=100.0, 
                 step=5.0
             )
             
@@ -1961,63 +2051,39 @@ elif mode == "📈 Individual Stock Analysis":
             </div>
             ''', unsafe_allow_html=True)
             
-            # Enhanced dynamic benchmarks comparison
+            # Enhanced dynamic benchmarks comparison - Fixed for mobile
             benchmarks = analysis['dynamic_benchmarks']
             if benchmarks:
-                st.markdown(f'''
-                <div style="background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.2); 
-                           border-radius: 15px; padding: 25px; margin: 25px 0;">
-                    <h4 style="color: #3b82f6; margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
-                        <span style="font-size: 1.5rem;">📊</span>
-                        Live Sector Benchmarks vs Stock Metrics
-                    </h4>
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px;">
-                        <div style="background: rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 20px;">
-                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
-                                <span style="font-size: 1.2rem;">💰</span>
-                                <span style="font-weight: 600; color: #1e293b;">PE Ratio Analysis</span>
-                            </div>
-                            <div style="font-size: 0.9rem; line-height: 1.6; color: #64748b;">
-                                <div><strong>Sector Average:</strong> {benchmarks.get('pe', 0):.2f}x</div>
-                                <div><strong>{analysis['ticker']} PE:</strong> {analysis['trailing_pe']:.2f}x</div>
-                                <div style="margin-top: 8px; padding: 8px; background: rgba(59, 130, 246, 0.1); border-radius: 6px;">
-                                    <strong style="color: #3b82f6;">Multiple:</strong> {(analysis['trailing_pe']/benchmarks.get('pe', 1)):.2f}x sector avg
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div style="background: rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 20px;">
-                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
-                                <span style="font-size: 1.2rem;">📚</span>
-                                <span style="font-weight: 600; color: #1e293b;">PB Ratio Analysis</span>
-                            </div>
-                            <div style="font-size: 0.9rem; line-height: 1.6; color: #64748b;">
-                                <div><strong>Sector Average:</strong> {benchmarks.get('pb', 0):.2f}x</div>
-                                <div><strong>{analysis['ticker']} PB:</strong> {analysis['pb_ratio']:.2f}x</div>
-                                <div style="margin-top: 8px; padding: 8px; background: rgba(16, 185, 129, 0.1); border-radius: 6px;">
-                                    <strong style="color: #10b981;">Multiple:</strong> {(analysis['pb_ratio']/benchmarks.get('pb', 1)):.2f}x sector avg
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div style="background: rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 20px;">
-                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
-                                <span style="font-size: 1.2rem;">🌱</span>
-                                <span style="font-weight: 600; color: #1e293b;">ROE Comparison</span>
-                            </div>
-                            <div style="font-size: 0.9rem; line-height: 1.6; color: #64748b;">
-                                <div><strong>Sector Average:</strong> {benchmarks.get('roe', 0):.1f}%</div>
-                                <div><strong>{analysis['ticker']} ROE:</strong> {(analysis['roe']*100):.1f}%</div>
-                                <div style="margin-top: 8px; padding: 8px; background: rgba(245, 158, 11, 0.1); border-radius: 6px;">
-                                    <strong style="color: #f59e0b;">Difference:</strong> {((analysis['roe']*100) - benchmarks.get('roe', 0)):+.1f} percentage points
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                ''', unsafe_allow_html=True)
+                st.markdown("### 📊 Live Sector Benchmarks vs Stock Metrics")
+                
+                col1, col2, col3 = st.columns(3)
+                
+                with col1:
+                    st.metric(
+                        label="💰 PE Ratio Analysis",
+                        value=f"{analysis['trailing_pe']:.2f}x",
+                        delta=f"Sector: {benchmarks.get('pe', 0):.2f}x"
+                    )
+                    st.caption(f"Multiple: {(analysis['trailing_pe']/benchmarks.get('pe', 1)):.2f}x sector avg")
+                
+                with col2:
+                    st.metric(
+                        label="📚 PB Ratio Analysis", 
+                        value=f"{analysis['pb_ratio']:.2f}x",
+                        delta=f"Sector: {benchmarks.get('pb', 0):.2f}x"
+                    )
+                    st.caption(f"Multiple: {(analysis['pb_ratio']/benchmarks.get('pb', 1)):.2f}x sector avg")
+                
+                with col3:
+                    roe_diff = ((analysis['roe']*100) - benchmarks.get('roe', 0))
+                    st.metric(
+                        label="🌱 ROE Comparison",
+                        value=f"{(analysis['roe']*100):.1f}%",
+                        delta=f"{roe_diff:+.1f}pp vs sector"
+                    )
+                    st.caption(f"Sector Avg: {benchmarks.get('roe', 0):.1f}%")
             
-            # Enhanced valuation summary with modern cards
+            # Enhanced valuation summary with mobile-friendly components
             st.markdown("### 💎 Dynamic Valuation Analysis")
             
             col1, col2 = st.columns([3, 2])
@@ -2026,111 +2092,94 @@ elif mode == "📈 Individual Stock Analysis":
                 fair_value = analysis['avg_fair_value'] if analysis['avg_fair_value'] else analysis['price']
                 upside = analysis['avg_upside'] if analysis['avg_upside'] else 0
                 
-                st.markdown(f'''
-                <div style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(52, 211, 153, 0.1)); 
-                           border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 20px; padding: 25px; margin-bottom: 20px;">
-                    <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 20px;">
-                        <span style="font-size: 2.5rem;">🧮</span>
-                        <div>
-                            <h3 style="margin: 0; color: #059669;">Dynamic Valuation Summary</h3>
-                            <p style="margin: 5px 0 0 0; color: #6b7280; font-size: 0.9rem;">
-                                Based on real-time {analysis['sector']} sector benchmarks
-                            </p>
-                        </div>
-                    </div>
-                    
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
-                        <div style="text-align: center; background: rgba(255, 255, 255, 0.2); border-radius: 12px; padding: 15px;">
-                            <div style="font-size: 2rem; font-weight: bold; color: #059669; margin-bottom: 5px;">
-                                ₹{fair_value:,.2f}
-                            </div>
-                            <div style="color: #6b7280; font-size: 0.9rem;">Dynamic Fair Value</div>
-                        </div>
-                        <div style="text-align: center; background: rgba(255, 255, 255, 0.2); border-radius: 12px; padding: 15px;">
-                            <div style="font-size: 2rem; font-weight: bold; color: #374151; margin-bottom: 5px;">
-                                ₹{analysis["price"]:,.2f}
-                            </div>
-                            <div style="color: #6b7280; font-size: 0.9rem;">Current Market Price</div>
-                        </div>
-                    </div>
-                    
-                    <div style="text-align: center; padding: 20px; background: rgba(16, 185, 129, 0.15); border-radius: 15px;">
-                        <div style="font-size: 2.2rem; font-weight: bold; margin-bottom: 8px;">
-                            <span style="color: {'#059669' if upside > 0 else '#dc2626'};">
-                                {"🚀" if upside > 0 else "⚠️"} {upside:+.1f}%
-                            </span>
-                        </div>
-                        <div style="color: #6b7280; font-size: 1rem; font-weight: 500;">
-                            {"Upside Potential" if upside > 0 else "Downside Risk"} (Dynamic Calculation)
-                        </div>
-                    </div>
-                </div>
-                ''', unsafe_allow_html=True)
+                # Main valuation metrics
+                st.subheader("🧮 Dynamic Valuation Summary")
+                st.caption(f"Based on real-time {analysis['sector']} sector benchmarks")
+                
+                # Two column layout for fair value and current price
+                subcol1, subcol2 = st.columns(2)
+                
+                with subcol1:
+                    st.metric(
+                        label="Dynamic Fair Value",
+                        value=f"₹{fair_value:,.2f}",
+                        help="Calculated using real-time sector benchmarks"
+                    )
+                
+                with subcol2:
+                    st.metric(
+                        label="Current Market Price", 
+                        value=f"₹{analysis['price']:,.2f}",
+                        help="Latest market price"
+                    )
+                
+                # Upside potential display
+                upside_color = "normal" if upside > 0 else "inverse"
+                upside_emoji = "🚀" if upside > 0 else "⚠️"
+                upside_text = "Upside Potential" if upside > 0 else "Downside Risk"
+                
+                st.metric(
+                    label=f"{upside_emoji} {upside_text} (Dynamic Calculation)",
+                    value=f"{upside:+.1f}%",
+                    delta=f"vs current price"
+                )
             
             with col2:
-                # Enhanced recommendation with dynamic context
+                # Enhanced recommendation with dynamic context - Mobile friendly
                 pe_ratio = analysis['trailing_pe'] / benchmarks.get('pe', 1) if analysis['trailing_pe'] and benchmarks else 1
                 
                 if upside > 25 and pe_ratio < 1.2:
-                    rec_class, rec_text, rec_icon, rec_color = "rec-strong-buy", "Strong Buy", "🚀", "#059669"
+                    rec_text, rec_icon = "Strong Buy", "🚀"
                 elif upside > 15 and pe_ratio < 1.3:
-                    rec_class, rec_text, rec_icon, rec_color = "rec-buy", "Buy", "✅", "#0d9488"
+                    rec_text, rec_icon = "Buy", "✅"
                 elif upside > 0 and pe_ratio < 1.5:
-                    rec_class, rec_text, rec_icon, rec_color = "rec-hold", "Hold", "📥", "#d97706"
+                    rec_text, rec_icon = "Hold", "📥"
                 elif upside > -10:
-                    rec_class, rec_text, rec_icon, rec_color = "rec-hold", "Weak Hold", "⏸️", "#dc6e00"
+                    rec_text, rec_icon = "Weak Hold", "⏸️"
                 else:
-                    rec_class, rec_text, rec_icon, rec_color = "rec-avoid", "Avoid", "⚠️", "#dc2626"
+                    rec_text, rec_icon = "Avoid", "⚠️"
                 
-                st.markdown(f'''
-                <div style="background: linear-gradient(135deg, {rec_color}15, {rec_color}08); 
-                           border: 2px solid {rec_color}40; border-radius: 20px; padding: 25px; 
-                           text-align: center; height: 100%; display: flex; flex-direction: column; justify-content: center;">
-                    <div style="font-size: 3.5rem; margin-bottom: 15px;">{rec_icon}</div>
-                    <div style="font-size: 1.8rem; font-weight: bold; color: {rec_color}; margin-bottom: 10px;">
-                        {rec_text}
-                    </div>
-                    <div style="background: {rec_color}20; border-radius: 10px; padding: 12px; margin-bottom: 15px;">
-                        <div style="color: {rec_color}; font-weight: 600; font-size: 1.1rem;">
-                            Expected: {upside:+.1f}%
-                        </div>
-                    </div>
-                    <div style="color: #6b7280; font-size: 0.9rem; line-height: 1.4;">
-                        PE: {pe_ratio:.2f}x sector avg<br>
-                        Risk Level: {"Low" if upside > 15 else "Medium" if upside > 0 else "High"}
-                    </div>
-                </div>
-                ''', unsafe_allow_html=True)
+                # Use streamlit info/success/warning/error boxes for recommendations
+                rec_message = f"""
+                **{rec_icon} {rec_text}**
+                
+                **Expected:** {upside:+.1f}%  
+                **PE:** {pe_ratio:.2f}x sector avg  
+                **Risk Level:** {"Low" if upside > 15 else "Medium" if upside > 0 else "High"}
+                """
+                
+                if rec_text in ["Strong Buy", "Buy"]:
+                    st.success(rec_message)
+                elif rec_text == "Hold":
+                    st.info(rec_message)
+                elif rec_text == "Weak Hold":
+                    st.warning(rec_message)
+                else:
+                    st.error(rec_message)
             
-            # Enhanced key metrics with modern card design
+            # Enhanced key metrics with mobile-friendly grid
             st.markdown("### 📊 Key Financial Metrics")
             
-            col1, col2, col3, col4, col5, col6 = st.columns(6)
+            # Mobile responsive: 3 columns on desktop, 2 on mobile
+            col1, col2, col3 = st.columns(3)
+            col4, col5, col6 = st.columns(3)
             
             metrics_data = [
-                (col1, "💰", f"₹{analysis['price']:,.2f}", "Current Price", "#3b82f6"),
-                (col2, "📈", f"{analysis['trailing_pe']:.2f}" if analysis['trailing_pe'] else "N/A", "P/E Ratio", "#8b5cf6"),
-                (col3, "📚", f"{analysis['pb_ratio']:.2f}" if analysis['pb_ratio'] else "N/A", "P/B Ratio", "#10b981"),
-                (col4, "🏦", f"₹{analysis['market_cap']/10000000:,.0f}Cr" if analysis['market_cap'] else "N/A", "Market Cap", "#f59e0b"),
-                (col5, "💵", f"{analysis['dividend_yield']*100:.2f}%" if analysis['dividend_yield'] else "N/A", "Dividend Yield", "#06b6d4"),
-                (col6, "📊", f"{analysis['beta']:.2f}" if analysis['beta'] else "N/A", "Beta", "#ef4444")
+                (col1, "💰", f"₹{analysis['price']:,.2f}", "Current Price"),
+                (col2, "📈", f"{analysis['trailing_pe']:.2f}" if analysis['trailing_pe'] else "N/A", "P/E Ratio"),
+                (col3, "📚", f"{analysis['pb_ratio']:.2f}" if analysis['pb_ratio'] else "N/A", "P/B Ratio"),
+                (col4, "🏦", f"₹{analysis['market_cap']/10000000:,.0f}Cr" if analysis['market_cap'] else "N/A", "Market Cap"),
+                (col5, "💵", f"{analysis['dividend_yield']*100:.2f}%" if analysis['dividend_yield'] else "N/A", "Dividend Yield"),
+                (col6, "📊", f"{analysis['beta']:.2f}" if analysis['beta'] else "N/A", "Beta")
             ]
             
-            for col, icon, value, label, color in metrics_data:
+            for col, icon, value, label in metrics_data:
                 with col:
-                    st.markdown(f'''
-                    <div style="background: linear-gradient(135deg, {color}15, {color}08); 
-                               border: 1px solid {color}40; border-radius: 15px; padding: 20px; 
-                               text-align: center; height: 120px; display: flex; flex-direction: column; justify-content: center;">
-                        <div style="font-size: 2rem; margin-bottom: 8px;">{icon}</div>
-                        <div style="font-size: 1.3rem; font-weight: bold; color: {color}; margin-bottom: 5px;">
-                            {value}
-                        </div>
-                        <div style="font-size: 0.85rem; color: #6b7280; font-weight: 500;">
-                            {label}
-                        </div>
-                    </div>
-                    ''', unsafe_allow_html=True)
+                    st.metric(
+                        label=f"{icon} {label}",
+                        value=value,
+                        help=f"Latest {label.lower()} data"
+                    )
             
             # Enhanced valuation methods section
             if analysis['upside_pe'] is not None or analysis['upside_ev'] is not None:
@@ -2157,90 +2206,53 @@ elif mode == "📈 Individual Stock Analysis":
                 )
                 st.plotly_chart(fig_gauge, use_container_width=True)
             
-            # Enhanced 52-week performance section
+            # Enhanced 52-week performance section - Mobile friendly
             if analysis['pct_from_high'] is not None:
                 st.markdown("### 📍 52-Week Performance Analysis")
-                
-                # Create performance visualization
-                performance_color = "#059669" if analysis['pct_from_low'] > 50 else "#f59e0b" if analysis['pct_from_low'] > 20 else "#dc2626"
-                high_distance_color = "#dc2626" if -analysis['pct_from_high'] > 30 else "#f59e0b" if -analysis['pct_from_high'] > 15 else "#059669"
                 
                 col1, col2 = st.columns(2)
                 
                 with col1:
-                    st.markdown(f'''
-                    <div style="background: linear-gradient(135deg, {high_distance_color}15, {high_distance_color}08); 
-                               border: 1px solid {high_distance_color}40; border-radius: 15px; padding: 25px; 
-                               text-align: center; margin-bottom: 15px;">
-                        <div style="font-size: 2.5rem; margin-bottom: 10px;">📉</div>
-                        <div style="font-size: 2rem; font-weight: bold; color: {high_distance_color}; margin-bottom: 8px;">
-                            {-analysis['pct_from_high']:+.1f}%
-                        </div>
-                        <div style="color: #6b7280; font-size: 1rem; font-weight: 500;">
-                            Distance from 52W High
-                        </div>
-                        <div style="color: #9ca3af; font-size: 0.85rem; margin-top: 5px;">
-                            ₹{analysis['high_52w']:,.2f}
-                        </div>
-                    </div>
-                    ''', unsafe_allow_html=True)
+                    st.metric(
+                        label="📉 Distance from 52W High",
+                        value=f"{-analysis['pct_from_high']:+.1f}%",
+                        delta=f"₹{analysis['high_52w']:,.2f}",
+                        delta_color="inverse"
+                    )
                     
-                    st.markdown(f'''
-                    <div style="background: linear-gradient(135deg, {performance_color}15, {performance_color}08); 
-                               border: 1px solid {performance_color}40; border-radius: 15px; padding: 25px; 
-                               text-align: center;">
-                        <div style="font-size: 2.5rem; margin-bottom: 10px;">📈</div>
-                        <div style="font-size: 2rem; font-weight: bold; color: {performance_color}; margin-bottom: 8px;">
-                            {analysis['pct_from_low']:+.1f}%
-                        </div>
-                        <div style="color: #6b7280; font-size: 1rem; font-weight: 500;">
-                            Distance from 52W Low
-                        </div>
-                        <div style="color: #9ca3af; font-size: 0.85rem; margin-top: 5px;">
-                            ₹{analysis['low_52w']:,.2f}
-                        </div>
-                    </div>
-                    ''', unsafe_allow_html=True)
+                    st.metric(
+                        label="📈 Distance from 52W Low", 
+                        value=f"{analysis['pct_from_low']:+.1f}%",
+                        delta=f"₹{analysis['low_52w']:,.2f}",
+                        delta_color="normal"
+                    )
                 
                 with col2:
-                    # 52-week range visualization
+                    # 52-week range position calculation
                     current_position = ((analysis['price'] - analysis['low_52w']) / (analysis['high_52w'] - analysis['low_52w'])) * 100
                     
-                    st.markdown(f'''
-                    <div style="background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.2); 
-                               border-radius: 15px; padding: 25px; height: 100%;">
-                        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 20px;">
-                            <span style="font-size: 1.5rem;">📊</span>
-                            <span style="font-size: 1.1rem; font-weight: 600; color: #3b82f6;">
-                                52-Week Range Position
-                            </span>
-                        </div>
-                        
-                        <div style="background: #e5e7eb; border-radius: 10px; height: 20px; margin: 20px 0; position: relative; overflow: hidden;">
-                            <div style="background: linear-gradient(90deg, #dc2626, #f59e0b, #059669); 
-                                       height: 100%; width: {current_position:.1f}%; border-radius: 10px;">
-                            </div>
-                            <div style="position: absolute; top: 50%; right: 10px; transform: translateY(-50%); 
-                                       background: white; border-radius: 50%; width: 16px; height: 16px; border: 2px solid #3b82f6;">
-                            </div>
-                        </div>
-                        
-                        <div style="display: flex; justify-content: space-between; font-size: 0.85rem; color: #6b7280;">
-                            <span>52W Low</span>
-                            <span style="font-weight: 600; color: #3b82f6;">{current_position:.1f}% of range</span>
-                            <span>52W High</span>
-                        </div>
-                        
-                        <div style="margin-top: 20px; padding: 15px; background: rgba(255, 255, 255, 0.1); border-radius: 8px;">
-                            <div style="color: #374151; font-weight: 600; font-size: 1rem; margin-bottom: 5px;">
-                                Current Price: ₹{analysis['price']:,.2f}
-                            </div>
-                            <div style="color: #6b7280; font-size: 0.9rem;">
-                                Range: ₹{analysis['low_52w']:,.2f} - ₹{analysis['high_52w']:,.2f}
-                            </div>
-                        </div>
-                    </div>
-                    ''', unsafe_allow_html=True)
+                    st.subheader("📊 52-Week Range Position")
+                    
+                    # Progress bar representation
+                    st.progress(current_position / 100)
+                    st.caption(f"**Current Position:** {current_position:.1f}% of 52-week range")
+                    
+                    # Range information
+                    st.metric(
+                        label="Current Price Position",
+                        value=f"₹{analysis['price']:,.2f}",
+                        help=f"Range: ₹{analysis['low_52w']:,.2f} - ₹{analysis['high_52w']:,.2f}"
+                    )
+                    
+                    # Performance indicator
+                    if current_position > 75:
+                        st.success("🟢 Near 52-week high - Strong momentum")
+                    elif current_position > 50:
+                        st.info("🟡 Above midpoint - Moderate performance") 
+                    elif current_position > 25:
+                        st.warning("🟠 Below midpoint - Weak performance")
+                    else:
+                        st.error("🔴 Near 52-week low - Poor performance")
         
         elif error:
             st.error(f"❌ Error analyzing {ticker}: {error}")
@@ -2255,12 +2267,14 @@ st.markdown('''
     <h4 style="color: #a78bfa; margin-bottom: 15px;">NYZTrade Sector | Two-Step Industry-Focused Analysis</h4>
     <div class="disclaimer">
         ⚠️ <strong>Important Disclaimer:</strong> This platform uses a two-step screening process: first select an industry sector, 
-        then choose from 5 valuation strategies. Dynamic benchmarks are calculated from real sector data. Stocks with extreme outliers 
-        (>500% upside) and incomplete valuation data are automatically excluded. The analysis and recommendations should not be 
+        then choose from 6 valuation and technical strategies. Dynamic benchmarks are calculated from real sector data. 
+        Technical screeners (Supertrend, RSI/MACD) use 52-week range analysis as proxy indicators. 
+        Stocks with extreme outliers (>500% upside) and incomplete valuation data are automatically excluded. 
+        The platform is optimized for both desktop and mobile devices. The analysis and recommendations should not be 
         considered as financial advice. Always conduct your own research and consult with qualified financial professionals before making any investment decisions.
     </div>
     <div style="margin-top: 15px; color: #64748b; font-size: 0.9rem;">
-        © 2024 NYZTrade Sector | 11 Industry Sectors × 5 Strategies = 55 Combinations | Dynamic Benchmarks | Quality Validation
+        © 2024 NYZTrade Sector | 11 Industry Sectors × 6 Strategies = 66 Combinations | Dynamic Benchmarks | Quality Validation
     </div>
 </div>
 ''', unsafe_allow_html=True)
