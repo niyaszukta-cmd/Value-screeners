@@ -11566,9 +11566,7 @@ st.markdown('''
     <h4 style="color: #a78bfa; margin-bottom: 15px;">NYZTrade Sector | Two-Step Industry-Focused Analysis</h4>
     <div class="disclaimer">
         ⚠️ <strong>Important Disclaimer:</strong> This platform uses a two-step screening process: first select an industry sector, 
-        then choose from 6 valuation and technical strategies. Dynamic benchmarks are calculated from real sector data. 
-        Technical screeners (Supertrend, RSI/MACD) use 52-week range analysis as proxy indicators. 
-        Stocks with extreme outliers (>500% upside) and incomplete valuation data are automatically excluded. 
+        then choose from 6 valuation and technical strategies. Dynamic benchmarks are calculated from real sector data. Stocks with extreme outliers (>500% upside) and incomplete valuation data are automatically excluded. 
         The platform is optimized for both desktop and mobile devices. The analysis and recommendations should not be 
         considered as financial advice. Always conduct your own research and consult with qualified financial professionals before making any investment decisions.
     </div>
