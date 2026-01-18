@@ -10,11 +10,378 @@ import time
 from functools import wraps
 from io import BytesIO
 import statistics
+from reportlab.lib.pagesizes import A4
+from reportlab.lib import colors
+from reportlab.lib.units import inch
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.enums import TA_CENTER
 
 # ============================================================================
-# COMPREHENSIVE INDIAN STOCKS DATABASE - STREAMLIT CLOUD READY
+# STREAMLIT CONFIGURATION
 # ============================================================================
+st.set_page_config(
+    page_title="NYZTrade Comprehensive Platform",
+    page_icon="🎯",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
+# ============================================================================
+# PROFESSIONAL CSS STYLING - DARK/LIGHT MODE COMPATIBLE
+# ============================================================================
+st.markdown("""
+<style>
+    /* Main Container Styling */
+    .main-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 2rem 1.5rem;
+        border-radius: 15px;
+        margin: 1rem 0;
+        text-align: center;
+        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+    }
+    
+    .auth-container {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 20px;
+        padding: 2rem;
+        text-align: center;
+        color: white;
+        margin: 2rem 0;
+        box-shadow: 0 15px 35px rgba(102, 126, 234, 0.3);
+    }
+    
+    .stats-container {
+        display: flex;
+        justify-content: space-around;
+        flex-wrap: wrap;
+        margin: 1rem 0;
+    }
+    
+    .stat-card {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        color: white;
+        padding: 1rem;
+        border-radius: 10px;
+        text-align: center;
+        min-width: 150px;
+        margin: 0.5rem;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    }
+    
+    .highlight-box {
+        background: linear-gradient(135deg, rgba(34, 197, 94, 0.1), rgba(59, 130, 246, 0.1));
+        border: 2px solid rgba(34, 197, 94, 0.3);
+        border-radius: 15px;
+        padding: 1.5rem;
+        margin: 1.5rem 0;
+    }
+    
+    .success-message {
+        background: linear-gradient(135deg, rgba(34, 197, 94, 0.15), rgba(16, 185, 129, 0.15));
+        border: 1px solid rgba(34, 197, 94, 0.3);
+        color: #059669;
+        padding: 1rem;
+        border-radius: 10px;
+        margin: 1rem 0;
+    }
+    
+    .metric-card {
+        background: linear-gradient(135deg, #1e1b4b, #312e81);
+        border-radius: 15px;
+        padding: 1.5rem;
+        text-align: center;
+        margin: 0.5rem 0;
+        border: 1px solid rgba(124, 58, 237, 0.3);
+        box-shadow: 0 8px 25px rgba(124, 58, 237, 0.15);
+    }
+    
+    .metric-value {
+        font-size: 2rem;
+        font-weight: bold;
+        color: #a78bfa;
+        margin: 0.5rem 0;
+    }
+    
+    .metric-label {
+        font-size: 0.9rem;
+        color: #c4b5fd;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    
+    .company-header {
+        background: linear-gradient(135deg, #1e1b4b, #312e81);
+        border-radius: 20px;
+        padding: 2rem;
+        margin: 1rem 0;
+        border: 1px solid rgba(167, 139, 250, 0.3);
+        box-shadow: 0 10px 30px rgba(124, 58, 237, 0.15);
+    }
+    
+    .company-title {
+        font-size: 2.5rem;
+        color: #e2e8f0;
+        margin-bottom: 0.5rem;
+        font-weight: 700;
+    }
+    
+    .company-info {
+        color: #a78bfa;
+        font-size: 1.1rem;
+        margin: 0.25rem 0;
+    }
+    
+    .fair-value-card {
+        background: linear-gradient(135deg, #059669, #10b981);
+        border-radius: 20px;
+        padding: 2rem;
+        color: white;
+        text-align: center;
+        box-shadow: 0 10px 30px rgba(16, 185, 129, 0.3);
+    }
+    
+    .fair-value-title {
+        font-size: 1.2rem;
+        margin-bottom: 0.5rem;
+        opacity: 0.9;
+    }
+    
+    .fair-value-amount {
+        font-size: 3rem;
+        font-weight: bold;
+        margin: 1rem 0;
+    }
+    
+    .fair-value-details {
+        font-size: 1rem;
+        opacity: 0.8;
+    }
+    
+    .section-header {
+        font-size: 1.5rem;
+        color: #a78bfa;
+        margin: 2rem 0 1rem 0;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid rgba(167, 139, 250, 0.3);
+        font-weight: 600;
+    }
+    
+    .recommendation-card {
+        border-radius: 15px;
+        padding: 1.5rem;
+        text-align: center;
+        margin: 1rem 0;
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+    }
+    
+    .rec-strong-buy {
+        background: linear-gradient(135deg, #059669, #10b981);
+        color: white;
+    }
+    
+    .rec-buy {
+        background: linear-gradient(135deg, #0891b2, #06b6d4);
+        color: white;
+    }
+    
+    .rec-hold {
+        background: linear-gradient(135deg, #ca8a04, #eab308);
+        color: white;
+    }
+    
+    .rec-avoid {
+        background: linear-gradient(135deg, #dc2626, #ef4444);
+        color: white;
+    }
+    
+    .valuation-box {
+        background: rgba(30, 27, 75, 0.6);
+        border: 1px solid rgba(167, 139, 250, 0.3);
+        border-radius: 15px;
+        padding: 1.5rem;
+        margin: 1rem 0;
+    }
+    
+    .valuation-method {
+        color: #a78bfa;
+        font-size: 1.2rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+    }
+    
+    .valuation-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin: 0.5rem 0;
+        padding: 0.5rem;
+        border-radius: 8px;
+        background: rgba(167, 139, 250, 0.05);
+    }
+    
+    .valuation-label {
+        color: #c4b5fd;
+        font-weight: 500;
+    }
+    
+    .valuation-value {
+        color: #e2e8f0;
+        font-weight: 600;
+    }
+    
+    .welcome-section {
+        background: linear-gradient(135deg, rgba(124, 58, 237, 0.1), rgba(167, 139, 250, 0.1));
+        border-radius: 20px;
+        padding: 3rem 2rem;
+        text-align: center;
+        margin: 2rem 0;
+        border: 1px solid rgba(124, 58, 237, 0.2);
+    }
+    
+    .welcome-title {
+        font-size: 2.5rem;
+        color: #a78bfa;
+        margin-bottom: 1rem;
+        font-weight: 700;
+    }
+    
+    .welcome-subtitle {
+        font-size: 1.2rem;
+        color: #c4b5fd;
+        margin-bottom: 2rem;
+    }
+    
+    .feature-list {
+        text-align: left;
+        max-width: 600px;
+        margin: 0 auto;
+        color: #e2e8f0;
+    }
+    
+    .feature-list li {
+        margin: 0.5rem 0;
+        font-size: 1.1rem;
+    }
+    
+    /* 52-week range styling */
+    .range-container {
+        background: rgba(30, 27, 75, 0.6);
+        border-radius: 15px;
+        padding: 1.5rem;
+        margin: 1rem 0;
+        border: 1px solid rgba(167, 139, 250, 0.3);
+    }
+    
+    .range-labels {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 1rem;
+        font-size: 0.9rem;
+        color: #a78bfa;
+    }
+    
+    .range-bar {
+        width: 100%;
+        height: 20px;
+        background: linear-gradient(90deg, #dc2626 0%, #eab308 50%, #059669 100%);
+        border-radius: 10px;
+        position: relative;
+        margin: 1rem 0;
+        box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+    
+    .range-indicator {
+        position: absolute;
+        top: -5px;
+        width: 4px;
+        height: 30px;
+        background: #e2e8f0;
+        border-radius: 2px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    }
+    
+    .range-info {
+        text-align: center;
+        margin-top: 1rem;
+        color: #e2e8f0;
+        font-weight: 600;
+    }
+    
+    /* Footer styling */
+    .footer {
+        background: linear-gradient(135deg, #1e1b4b, #312e81);
+        color: #c4b5fd;
+        text-align: center;
+        padding: 2rem 1rem;
+        border-radius: 15px;
+        margin-top: 3rem;
+        border: 1px solid rgba(167, 139, 250, 0.2);
+    }
+    
+    .disclaimer {
+        font-size: 0.9rem;
+        color: #94a3b8;
+        margin-top: 1rem;
+        font-style: italic;
+    }
+    
+    /* Mobile responsiveness */
+    @media (max-width: 768px) {
+        .main-header { padding: 1rem; }
+        .stats-container { flex-direction: column; align-items: center; }
+        .stat-card { min-width: 200px; margin: 0.25rem 0; }
+        .company-title { font-size: 1.8rem; }
+        .fair-value-amount { font-size: 2rem; }
+        .welcome-title { font-size: 2rem; }
+    }
+</style>
+""", unsafe_allow_html=True)
+
+# ============================================================================
+# PASSWORD AUTHENTICATION
+# ============================================================================
+def check_password():
+    def password_entered():
+        username = st.session_state["username"].strip().lower()
+        password = st.session_state["password"]
+        users = {"demo": "demo123", "premium": "1nV3st!ng", "niyas": "buffett123"}
+        if username in users and password == users[username]:
+            st.session_state["password_correct"] = True
+            st.session_state["authenticated_user"] = username
+            del st.session_state["password"]
+            return
+        st.session_state["password_correct"] = False
+    
+    if "password_correct" not in st.session_state:
+        st.markdown("""
+        <div class="auth-container">
+            <h1>🎯 NYZTrade Comprehensive Platform</h1>
+            <h3>Professional Stock Analysis & Screening</h3>
+            <p>Advanced Valuation • Industry Screening • Portfolio Analysis</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col2:
+            st.text_input("👤 Username", key="username", placeholder="Enter username")
+            st.text_input("🔒 Password", type="password", key="password", placeholder="Enter password")
+            st.button("🚀 Login", on_click=password_entered, use_container_width=True, type="primary")
+            st.info("💡 Demo Access: demo/demo123")
+        return False
+    elif not st.session_state["password_correct"]:
+        st.error("❌ Incorrect credentials. Please try again.")
+        return False
+    return True
+
+if not check_password():
+    st.stop()
+
+# ============================================================================
+# COMPREHENSIVE INDIAN STOCKS DATABASE
+# ============================================================================
 """
 Indian Stocks Database
 Generated from stocks_universe_categorized_enhanced.csv
@@ -9361,8 +9728,73 @@ INDIAN_STOCKS = {
 }
 
 
+# ============================================================================
+# INDUSTRY BENCHMARKS AND SECTOR MAPPING
+# ============================================================================
+INDUSTRY_TO_SECTOR = {
+    # Financial Services
+    "Credit Services": "Financial Services", 
+    "Financial Services": "Financial Services",
+    "Insurance - Life": "Financial Services",
+    "Insurance - Property & Casualty": "Financial Services",
+    "Money Center Banks": "Financial Services",
+    
+    # Technology
+    "Information Technology Services": "Technology",
+    "Wireless Communications": "Technology",
+    
+    # Healthcare & Pharma
+    "Drug Manufacturers - Major": "Healthcare & Pharma",
+    "Drug Manufacturers - Other": "Healthcare & Pharma",
+    "Medical Services": "Healthcare & Pharma",
+    
+    # Industrial & Manufacturing
+    "Diversified Electronics": "Industrial & Manufacturing",
+    "Diversified Machinery": "Industrial & Manufacturing",
+    "Steel & Iron": "Industrial & Manufacturing",
+    
+    # Energy & Utilities
+    "Electric Utilities": "Energy & Utilities",
+    "Gas Utilities": "Energy & Utilities",
+    "Oil & Gas Operations": "Energy & Utilities",
+    "Oil & Gas Refining & Marketing": "Energy & Utilities",
+    "Renewable Energy": "Energy & Utilities",
+    
+    # Consumer & Retail
+    "Auto Manufacturers - Major": "Consumer & Retail",
+    "Auto Parts": "Consumer & Retail",
+    "Food - Major Diversified": "Consumer & Retail",
+    "Jewelry Stores": "Consumer & Retail",
+    "Retail - Apparel & Accessories": "Consumer & Retail",
+    
+    # Materials & Chemicals
+    "Agricultural Chemicals": "Materials & Chemicals",
+    "Cement & Aggregates": "Materials & Chemicals",
+    "Chemicals - Major Diversified": "Materials & Chemicals",
+    
+    # Real Estate & Construction
+    "Real Estate Development": "Real Estate & Construction",
+    
+    # Textiles
+    "Textile Industrial": "Textiles"
+}
 
-# Database utility functions
+SECTOR_BENCHMARKS = {
+    'Financial Services': {'pe': 18.0, 'pb': 1.5, 'roe': 15.0, 'ev_ebitda': 12.0},
+    'Technology': {'pe': 25.0, 'pb': 3.5, 'roe': 20.0, 'ev_ebitda': 15.0},
+    'Healthcare & Pharma': {'pe': 28.0, 'pb': 3.0, 'roe': 18.0, 'ev_ebitda': 14.0},
+    'Industrial & Manufacturing': {'pe': 22.0, 'pb': 2.0, 'roe': 14.0, 'ev_ebitda': 12.0},
+    'Energy & Utilities': {'pe': 15.0, 'pb': 1.2, 'roe': 12.0, 'ev_ebitda': 8.0},
+    'Consumer & Retail': {'pe': 30.0, 'pb': 2.5, 'roe': 16.0, 'ev_ebitda': 14.0},
+    'Materials & Chemicals': {'pe': 18.0, 'pb': 1.8, 'roe': 13.0, 'ev_ebitda': 10.0},
+    'Real Estate & Construction': {'pe': 25.0, 'pb': 1.5, 'roe': 12.0, 'ev_ebitda': 18.0},
+    'Textiles': {'pe': 20.0, 'pb': 1.5, 'roe': 15.0, 'ev_ebitda': 12.0},
+    'Other': {'pe': 20.0, 'pb': 2.0, 'roe': 15.0, 'ev_ebitda': 12.0}
+}
+
+# ============================================================================
+# UTILITY FUNCTIONS
+# ============================================================================
 def get_all_tickers():
     """Get list of all ticker symbols"""
     tickers = []
@@ -9403,172 +9835,49 @@ def get_stock_info(ticker):
             }
     return None
 
-# Statistics  
-TOTAL_STOCKS = sum(len(stocks) for stocks in INDIAN_STOCKS.values())
-TOTAL_CATEGORIES = len(INDIAN_STOCKS)
-
-# ============================================================================
-# STREAMLIT PAGE CONFIGURATION
-# ============================================================================
-
-st.set_page_config(
-    page_title="NYZTrade - Industry Stock Screener", 
-    page_icon="🎯", 
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
-
-# Enhanced CSS with mobile responsiveness
-st.markdown("""
-<style>
-    .main-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        padding: 2rem 1.5rem;
-        border-radius: 15px;
-        margin: 1rem 0;
-        text-align: center;
-        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
-    }
-    
-    .stats-container {
-        display: flex; 
-        justify-content: space-around; 
-        flex-wrap: wrap; 
-        margin: 1rem 0;
-    }
-    
-    .stat-card {
-        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-        color: white;
-        padding: 1rem;
-        border-radius: 10px;
-        text-align: center;
-        min-width: 150px;
-        margin: 0.5rem;
-        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-    }
-    
-    .highlight-box {
-        background: linear-gradient(135deg, rgba(34, 197, 94, 0.1), rgba(59, 130, 246, 0.1));
-        border: 2px solid rgba(34, 197, 94, 0.3);
-        border-radius: 15px;
-        padding: 1.5rem;
-        margin: 1.5rem 0;
-    }
-    
-    .success-message {
-        background: linear-gradient(135deg, rgba(34, 197, 94, 0.15), rgba(16, 185, 129, 0.15));
-        border: 1px solid rgba(34, 197, 94, 0.3);
-        color: #059669;
-        padding: 1rem;
-        border-radius: 10px;
-        margin: 1rem 0;
-    }
-    
-    /* Mobile responsiveness */
-    @media (max-width: 768px) {
-        .main-header { padding: 1rem; }
-        .stats-container { flex-direction: column; align-items: center; }
-        .stat-card { min-width: 200px; margin: 0.25rem 0; }
-    }
-</style>
-""", unsafe_allow_html=True)
-
-# ============================================================================
-# SECTOR GROUPING AND BENCHMARKS
-# ============================================================================
-
-INDUSTRY_TO_SECTOR = {
-    # Financial Services
-    "Credit Services": "Financial Services", 
-    "Financial Services": "Financial Services",
-    "Insurance - Life": "Financial Services",
-    "Insurance - Property & Casualty": "Financial Services",
-    "Money Center Banks": "Financial Services",
-    
-    # Technology
-    "Information Technology Services": "Technology",
-    "Wireless Communications": "Technology",
-    
-    # Healthcare & Pharma
-    "Drug Manufacturers - Major": "Healthcare & Pharma",
-    "Drug Manufacturers - Other": "Healthcare & Pharma",
-    "Drugs - Generic": "Healthcare & Pharma",
-    "Medical Services": "Healthcare & Pharma",
-    
-    # Industrial & Manufacturing
-    "Diversified Electronics": "Industrial & Manufacturing",
-    "Diversified Machinery": "Industrial & Manufacturing",
-    "Steel & Iron": "Industrial & Manufacturing",
-    
-    # Energy & Utilities
-    "Electric Utilities": "Energy & Utilities",
-    "Gas Utilities": "Energy & Utilities",
-    "Oil & Gas Operations": "Energy & Utilities",
-    "Oil & Gas Refining & Marketing": "Energy & Utilities",
-    "Renewable Energy": "Energy & Utilities",
-    
-    # Consumer & Retail
-    "Auto Manufacturers - Major": "Consumer & Retail",
-    "Auto Parts": "Consumer & Retail",
-    "Food - Major Diversified": "Consumer & Retail",
-    "Jewelry Stores": "Consumer & Retail",
-    "Retail - Apparel & Accessories": "Consumer & Retail",
-    
-    # Materials & Chemicals
-    "Agricultural Chemicals": "Materials & Chemicals",
-    "Cement & Aggregates": "Materials & Chemicals",
-    "Chemicals - Major Diversified": "Materials & Chemicals",
-    
-    # Real Estate & Construction
-    "Real Estate Development": "Real Estate & Construction",
-    
-    # Textiles
-    "Textile Industrial": "Textiles"
-}
-
 def get_sector_for_industry(industry):
     """Get broad sector for a given industry"""
     return INDUSTRY_TO_SECTOR.get(industry, "Other")
 
-# Default benchmarks by sector
-SECTOR_BENCHMARKS = {
-    'Financial Services': {'pe': 18.0, 'pb': 1.5, 'roe': 15.0},
-    'Technology': {'pe': 25.0, 'pb': 3.5, 'roe': 20.0},
-    'Healthcare & Pharma': {'pe': 28.0, 'pb': 3.0, 'roe': 18.0},
-    'Industrial & Manufacturing': {'pe': 22.0, 'pb': 2.0, 'roe': 14.0},
-    'Energy & Utilities': {'pe': 15.0, 'pb': 1.2, 'roe': 12.0},
-    'Consumer & Retail': {'pe': 30.0, 'pb': 2.5, 'roe': 16.0},
-    'Materials & Chemicals': {'pe': 18.0, 'pb': 1.8, 'roe': 13.0},
-    'Real Estate & Construction': {'pe': 25.0, 'pb': 1.5, 'roe': 12.0},
-    'Textiles': {'pe': 20.0, 'pb': 1.5, 'roe': 15.0},
-    'Other': {'pe': 20.0, 'pb': 2.0, 'roe': 15.0}
-}
+# Statistics
+TOTAL_STOCKS = sum(len(stocks) for stocks in INDIAN_STOCKS.values())
+TOTAL_CATEGORIES = len(INDIAN_STOCKS)
 
 # ============================================================================
 # STOCK DATA FETCHING AND CACHING
 # ============================================================================
+def retry_with_backoff(retries=3, backoff_in_seconds=2):
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            x = 0
+            while True:
+                try:
+                    return func(*args, **kwargs)
+                except Exception as e:
+                    if x == retries:
+                        raise
+                    time.sleep(backoff_in_seconds * 2 ** x)
+                    x += 1
+        return wrapper
+    return decorator
 
-@st.cache_data(ttl=3600)  # Cache for 1 hour
-def fetch_stock_data(ticker, max_retries=2):
+@st.cache_data(ttl=3600)
+@retry_with_backoff(retries=3, backoff_in_seconds=2)
+def fetch_stock_data(ticker):
     """Fetch stock data with caching and retry mechanism"""
-    for attempt in range(max_retries + 1):
-        try:
-            stock = yf.Ticker(ticker)
-            info = stock.info
-            
-            if not info:
-                continue
-                
-            return info, None
-            
-        except Exception as e:
-            if attempt == max_retries:
-                return None, str(e)
-            time.sleep(0.5)  # Brief pause before retry
-    
-    return None, "Failed after retries"
+    try:
+        time.sleep(0.5)  # Rate limiting
+        stock = yf.Ticker(ticker)
+        info = stock.info
+        if not info or len(info) < 5:
+            return None, "Unable to fetch data"
+        return info, None
+    except Exception as e:
+        error_msg = str(e)
+        if "429" in error_msg or "rate" in error_msg.lower():
+            return None, "Rate limit reached"
+        return None, str(e)[:100]
 
 def get_stock_fundamentals(ticker):
     """Get key fundamental metrics for a stock"""
@@ -9593,7 +9902,13 @@ def get_stock_fundamentals(ticker):
             'debt_to_equity': info.get('debtToEquity'),
             '52w_high': info.get('fiftyTwoWeekHigh'),
             '52w_low': info.get('fiftyTwoWeekLow'),
-            'volume': info.get('volume')
+            'volume': info.get('volume'),
+            'trailing_eps': info.get('trailingEps'),
+            'forward_pe': info.get('forwardPE'),
+            'enterprise_value': info.get('enterpriseValue'),
+            'ebitda': info.get('ebitda'),
+            'book_value': info.get('bookValue'),
+            'revenue': info.get('totalRevenue')
         }
         
         # Calculate additional metrics
@@ -9615,35 +9930,124 @@ def get_stock_fundamentals(ticker):
             fundamentals['cap_type'] = 'Unknown'
         
         return fundamentals
-        
+    
     except Exception as e:
         return None
 
-# ============================================================================
-# VALUATION AND SCREENING LOGIC
-# ============================================================================
+def calculate_valuations(info):
+    """Advanced valuation calculations using multiple methods"""
+    try:
+        price = info.get('currentPrice', 0) or info.get('regularMarketPrice', 0)
+        trailing_pe = info.get('trailingPE', 0)
+        forward_pe = info.get('forwardPE', 0)
+        trailing_eps = info.get('trailingEps', 0)
+        enterprise_value = info.get('enterpriseValue', 0)
+        ebitda = info.get('ebitda', 0)
+        market_cap = info.get('marketCap', 0)
+        shares = info.get('sharesOutstanding', 1)
+        sector = info.get('sector', 'Other')
+        book_value = info.get('bookValue', 0)
+        revenue = info.get('totalRevenue', 0)
+        
+        # Map yfinance sector to our sector classification
+        sector_mapping = {
+            'Technology': 'Technology',
+            'Financial Services': 'Financial Services',
+            'Healthcare': 'Healthcare & Pharma',
+            'Industrials': 'Industrial & Manufacturing',
+            'Energy': 'Energy & Utilities',
+            'Consumer Cyclical': 'Consumer & Retail',
+            'Consumer Defensive': 'Consumer & Retail',
+            'Basic Materials': 'Materials & Chemicals',
+            'Communication Services': 'Technology',
+            'Real Estate': 'Real Estate & Construction',
+            'Utilities': 'Energy & Utilities'
+        }
+        
+        mapped_sector = sector_mapping.get(sector, 'Other')
+        benchmark = SECTOR_BENCHMARKS.get(mapped_sector, SECTOR_BENCHMARKS['Other'])
+        industry_pe = benchmark['pe']
+        industry_ev_ebitda = benchmark['ev_ebitda']
+        
+        # PE-based valuation
+        historical_pe = trailing_pe * 0.9 if trailing_pe and trailing_pe > 0 else industry_pe
+        blended_pe = (industry_pe + historical_pe) / 2
+        fair_value_pe = trailing_eps * blended_pe if trailing_eps else None
+        upside_pe = ((fair_value_pe - price) / price * 100) if fair_value_pe and price else None
+        
+        # EV/EBITDA-based valuation
+        current_ev_ebitda = enterprise_value / ebitda if ebitda and ebitda > 0 else None
+        target_ev_ebitda = (industry_ev_ebitda + current_ev_ebitda * 0.9) / 2 if current_ev_ebitda and 0 < current_ev_ebitda < 50 else industry_ev_ebitda
+        
+        if ebitda and ebitda > 0:
+            fair_ev = ebitda * target_ev_ebitda
+            net_debt = (info.get('totalDebt', 0) or 0) - (info.get('totalCash', 0) or 0)
+            fair_mcap = fair_ev - net_debt
+            fair_value_ev = fair_mcap / shares if shares else None
+            upside_ev = ((fair_value_ev - price) / price * 100) if fair_value_ev and price else None
+        else:
+            fair_value_ev = None
+            upside_ev = None
+        
+        # Price to Book valuation
+        pb_ratio = price / book_value if book_value and book_value > 0 else None
+        
+        # Price to Sales
+        ps_ratio = market_cap / revenue if revenue and revenue > 0 else None
+        
+        return {
+            'price': price, 'trailing_pe': trailing_pe, 'forward_pe': forward_pe,
+            'trailing_eps': trailing_eps, 'industry_pe': industry_pe,
+            'fair_value_pe': fair_value_pe, 'upside_pe': upside_pe,
+            'enterprise_value': enterprise_value, 'ebitda': ebitda,
+            'market_cap': market_cap, 'current_ev_ebitda': current_ev_ebitda,
+            'industry_ev_ebitda': industry_ev_ebitda,
+            'fair_value_ev': fair_value_ev, 'upside_ev': upside_ev,
+            'pb_ratio': pb_ratio, 'ps_ratio': ps_ratio,
+            'book_value': book_value, 'revenue': revenue,
+            'net_debt': (info.get('totalDebt', 0) or 0) - (info.get('totalCash', 0) or 0),
+            'dividend_yield': info.get('dividendYield', 0),
+            'beta': info.get('beta', 0),
+            'roe': info.get('returnOnEquity', 0),
+            'profit_margin': info.get('profitMargins', 0),
+            '52w_high': info.get('fiftyTwoWeekHigh', 0),
+            '52w_low': info.get('fiftyTwoWeekLow', 0),
+            'sector': mapped_sector
+        }
+    except:
+        return None
 
+# ============================================================================
+# SCREENING LOGIC
+# ============================================================================
 def calculate_fair_value(fundamentals, benchmarks):
-    """Simple fair value calculation using industry PE"""
-    if not fundamentals or not benchmarks or not fundamentals.get('trailing_pe'):
+    """Calculate fair value using industry benchmarks"""
+    if not fundamentals or not benchmarks:
         return None
     
     try:
-        # Simple PE-based valuation
-        current_pe = fundamentals['trailing_pe']
-        sector_pe = benchmarks['pe']
+        fair_values = []
         
-        if current_pe > 0:
-            # Calculate fair value based on sector PE
-            fair_value = fundamentals['price'] * (sector_pe / current_pe)
-            return fair_value if fair_value > 0 else None
+        # PE-based fair value
+        if fundamentals.get('trailing_pe') and fundamentals.get('trailing_eps'):
+            pe_fair_value = fundamentals['trailing_eps'] * benchmarks['pe']
+            if pe_fair_value > 0:
+                fair_values.append(pe_fair_value)
+        
+        # EV/EBITDA-based fair value (simplified)
+        if fundamentals.get('trailing_pe') and fundamentals['price']:
+            # Use PE as proxy for EV/EBITDA based valuation
+            ev_fair_value = fundamentals['price'] * (benchmarks['pe'] / fundamentals['trailing_pe'])
+            if ev_fair_value > 0:
+                fair_values.append(ev_fair_value)
+        
+        return np.mean(fair_values) if fair_values else None
+        
     except:
         return None
-    
-    return None
 
 def run_industry_screener(industry, strategy_type="undervalued", max_results=50):
-    """Run screening for a specific industry"""
+    """Run comprehensive screening for a specific industry"""
     
     stocks = get_stocks_by_category(industry)
     if not stocks:
@@ -9764,57 +10168,312 @@ def search_stocks_by_name(query, max_results=50):
     return results
 
 # ============================================================================
-# INDIVIDUAL STOCK ANALYSIS
+# CHART GENERATION FUNCTIONS
 # ============================================================================
+def create_gauge_chart(upside_pe, upside_ev):
+    """Create professional dual gauge chart for valuations"""
+    fig = make_subplots(
+        rows=1, cols=2,
+        specs=[[{'type': 'indicator'}, {'type': 'indicator'}]],
+        horizontal_spacing=0.15
+    )
+    
+    # PE Multiple Gauge
+    fig.add_trace(go.Indicator(
+        mode="gauge+number+delta",
+        value=upside_pe if upside_pe else 0,
+        number={'suffix': "%", 'font': {'size': 36, 'color': '#e2e8f0', 'family': 'Inter'}},
+        delta={'reference': 0, 'increasing': {'color': "#34d399"}, 'decreasing': {'color': "#f87171"}},
+        title={'text': "PE Multiple", 'font': {'size': 16, 'color': '#a78bfa', 'family': 'Inter'}},
+        gauge={
+            'axis': {'range': [-50, 50], 'tickwidth': 2, 'tickcolor': "#64748b", 'tickfont': {'color': '#94a3b8'}},
+            'bar': {'color': "#7c3aed", 'thickness': 0.75},
+            'bgcolor': "#1e1b4b",
+            'borderwidth': 2,
+            'bordercolor': "#4c1d95",
+            'steps': [
+                {'range': [-50, -20], 'color': '#7f1d1d'},
+                {'range': [-20, 0], 'color': '#78350f'},
+                {'range': [0, 20], 'color': '#14532d'},
+                {'range': [20, 50], 'color': '#065f46'}
+            ],
+            'threshold': {
+                'line': {'color': "#f472b6", 'width': 4},
+                'thickness': 0.8,
+                'value': 0
+            }
+        }
+    ), row=1, col=1)
+    
+    # EV/EBITDA Gauge
+    fig.add_trace(go.Indicator(
+        mode="gauge+number+delta",
+        value=upside_ev if upside_ev else 0,
+        number={'suffix': "%", 'font': {'size': 36, 'color': '#e2e8f0', 'family': 'Inter'}},
+        delta={'reference': 0, 'increasing': {'color': "#34d399"}, 'decreasing': {'color': "#f87171"}},
+        title={'text': "EV/EBITDA", 'font': {'size': 16, 'color': '#a78bfa', 'family': 'Inter'}},
+        gauge={
+            'axis': {'range': [-50, 50], 'tickwidth': 2, 'tickcolor': "#64748b", 'tickfont': {'color': '#94a3b8'}},
+            'bar': {'color': "#ec4899", 'thickness': 0.75},
+            'bgcolor': "#1e1b4b",
+            'borderwidth': 2,
+            'bordercolor': "#4c1d95",
+            'steps': [
+                {'range': [-50, -20], 'color': '#7f1d1d'},
+                {'range': [-20, 0], 'color': '#78350f'},
+                {'range': [0, 20], 'color': '#14532d'},
+                {'range': [20, 50], 'color': '#065f46'}
+            ],
+            'threshold': {
+                'line': {'color': "#f472b6", 'width': 4},
+                'thickness': 0.8,
+                'value': 0
+            }
+        }
+    ), row=1, col=2)
+    
+    fig.update_layout(
+        height=350,
+        margin=dict(l=30, r=30, t=60, b=30),
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
+        font={'family': 'Inter', 'color': '#e2e8f0'}
+    )
+    return fig
 
-def analyze_individual_stock(ticker):
-    """Analyze individual stock with industry benchmarks"""
+def create_valuation_comparison_chart(vals):
+    """Create professional bar chart comparing current vs fair values"""
+    categories = []
+    current_vals = []
+    fair_vals = []
     
-    # Get stock info
-    stock_info = get_stock_info(ticker)
-    if not stock_info:
-        return None, "Stock not found in database"
+    if vals['fair_value_pe']:
+        categories.append('PE Multiple')
+        current_vals.append(vals['price'])
+        fair_vals.append(vals['fair_value_pe'])
     
-    # Get fundamentals
-    fundamentals = get_stock_fundamentals(ticker)
-    if not fundamentals:
-        return None, "Unable to fetch stock data"
+    if vals['fair_value_ev']:
+        categories.append('EV/EBITDA')
+        current_vals.append(vals['price'])
+        fair_vals.append(vals['fair_value_ev'])
     
-    # Get sector benchmarks
-    industry = stock_info['category']
-    sector = get_sector_for_industry(industry)
-    benchmarks = SECTOR_BENCHMARKS.get(sector, SECTOR_BENCHMARKS['Other'])
+    if not categories:
+        return None
     
-    # Calculate fair value
-    fair_value = calculate_fair_value(fundamentals, benchmarks)
-    upside = ((fair_value - fundamentals['price']) / fundamentals['price']) * 100 if fair_value else 0
+    fig = go.Figure()
     
-    analysis = {
-        'ticker': ticker,
-        'company': fundamentals['name'],
-        'industry': industry,
-        'sector': sector,
-        'price': fundamentals['price'],
-        'fair_value': fair_value,
-        'upside': upside,
-        'fundamentals': fundamentals,
-        'benchmarks': benchmarks
-    }
+    # Current Price bars
+    fig.add_trace(go.Bar(
+        name='Current Price',
+        x=categories,
+        y=current_vals,
+        marker=dict(
+            color='#6366f1',
+            line=dict(color='#818cf8', width=2),
+        ),
+        text=[f'₹{v:,.2f}' for v in current_vals],
+        textposition='outside',
+        textfont=dict(size=14, color='#e2e8f0', family='JetBrains Mono')
+    ))
     
-    return analysis, None
+    # Fair Value bars
+    colors = ['#34d399' if fv > cv else '#f87171' for fv, cv in zip(fair_vals, current_vals)]
+    fig.add_trace(go.Bar(
+        name='Fair Value',
+        x=categories,
+        y=fair_vals,
+        marker=dict(
+            color=colors,
+            line=dict(color=['#6ee7b7' if c == '#34d399' else '#fca5a5' for c in colors], width=2),
+        ),
+        text=[f'₹{v:,.2f}' for v in fair_vals],
+        textposition='outside',
+        textfont=dict(size=14, color='#e2e8f0', family='JetBrains Mono')
+    ))
+    
+    fig.update_layout(
+        barmode='group',
+        height=400,
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
+        font=dict(family='Inter', size=12, color='#e2e8f0'),
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="center",
+            x=0.5,
+            font=dict(size=14, color='#e2e8f0')
+        ),
+        xaxis=dict(
+            showgrid=False,
+            showline=True,
+            linecolor='#4c1d95',
+            tickfont=dict(size=14, color='#e2e8f0')
+        ),
+        yaxis=dict(
+            showgrid=True,
+            gridcolor='rgba(167, 139, 250, 0.2)',
+            showline=False,
+            tickprefix='₹',
+            tickfont=dict(size=12, color='#a78bfa')
+        ),
+        margin=dict(l=60, r=40, t=60, b=40)
+    )
+    
+    return fig
+
+def create_52week_range_display(vals):
+    """Create 52-week price range display using HTML/CSS"""
+    low = vals.get('52w_low', 0)
+    high = vals.get('52w_high', 0)
+    current = vals.get('price', 0)
+    
+    if not all([low, high, current]) or high <= low:
+        return None
+    
+    # Calculate position percentage
+    position = ((current - low) / (high - low)) * 100
+    position = max(0, min(100, position))  # Clamp between 0-100
+    
+    html = f'''
+    <div class="range-container">
+        <div class="range-labels">
+            <span>52W Low: ₹{low:,.2f}</span>
+            <span>52W High: ₹{high:,.2f}</span>
+        </div>
+        <div class="range-bar">
+            <div class="range-indicator" style="left: {position}%;"></div>
+        </div>
+        <div class="range-info">
+            Current Price: ₹{current:,.2f} ({position:.1f}% of range)
+        </div>
+    </div>
+    '''
+    return html
 
 # ============================================================================
-# MAIN STREAMLIT APPLICATION
+# PDF REPORT GENERATION
 # ============================================================================
+def create_pdf_report(company, ticker, sector, vals):
+    """Generate professional PDF report"""
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=18)
+    styles = getSampleStyleSheet()
+    
+    title_style = ParagraphStyle(
+        'Title', 
+        parent=styles['Heading1'], 
+        fontSize=28, 
+        textColor=colors.HexColor('#7c3aed'), 
+        alignment=TA_CENTER,
+        spaceAfter=20
+    )
+    
+    subtitle_style = ParagraphStyle(
+        'Subtitle',
+        parent=styles['Normal'],
+        fontSize=12,
+        textColor=colors.HexColor('#64748b'),
+        alignment=TA_CENTER,
+        spaceAfter=30
+    )
+    
+    story = []
+    story.append(Paragraph("NYZTrade Comprehensive Analysis", title_style))
+    story.append(Paragraph("Professional Stock Valuation Report", subtitle_style))
+    story.append(Spacer(1, 10))
+    
+    # Company Info
+    story.append(Paragraph(f"{company}", styles['Heading2']))
+    story.append(Paragraph(f"Ticker: {ticker} | Sector: {sector}", styles['Normal']))
+    story.append(Paragraph(f"Report Date: {datetime.now().strftime('%B %d, %Y')}", styles['Normal']))
+    story.append(Spacer(1, 30))
+    
+    # Calculate averages
+    ups = [v for v in [vals['upside_pe'], vals['upside_ev']] if v is not None]
+    avg_up = np.mean(ups) if ups else 0
+    fairs = [v for v in [vals['fair_value_pe'], vals['fair_value_ev']] if v is not None]
+    avg_fair = np.mean(fairs) if fairs else vals['price']
+    
+    # Fair Value Summary
+    fair_data = [
+        ['Metric', 'Value'],
+        ['Fair Value', f"₹ {avg_fair:,.2f}"],
+        ['Current Price', f"₹ {vals['price']:,.2f}"],
+        ['Potential Upside', f"{avg_up:+.2f}%"]
+    ]
+    fair_table = Table(fair_data, colWidths=[3*inch, 2.5*inch])
+    fair_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#7c3aed')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 12),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#f8fafc')),
+        ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#e2e8f0')),
+        ('FONTSIZE', (0, 1), (-1, -1), 11),
+        ('TOPPADDING', (0, 1), (-1, -1), 8),
+        ('BOTTOMPADDING', (0, 1), (-1, -1), 8),
+    ]))
+    story.append(fair_table)
+    story.append(Spacer(1, 25))
+    
+    # Detailed Metrics
+    story.append(Paragraph("Valuation Metrics", styles['Heading3']))
+    metrics_data = [
+        ['Metric', 'Current', 'Industry Benchmark'],
+        ['PE Ratio', f"{vals['trailing_pe']:.2f}x" if vals['trailing_pe'] else 'N/A', f"{vals['industry_pe']:.2f}x"],
+        ['EV/EBITDA', f"{vals['current_ev_ebitda']:.2f}x" if vals['current_ev_ebitda'] else 'N/A', f"{vals['industry_ev_ebitda']:.2f}x"],
+        ['P/B Ratio', f"{vals['pb_ratio']:.2f}x" if vals['pb_ratio'] else 'N/A', '-'],
+        ['EPS', f"₹ {vals['trailing_eps']:.2f}" if vals['trailing_eps'] else 'N/A', '-'],
+        ['Market Cap', f"₹ {vals['market_cap']/10000000:,.0f} Cr" if vals['market_cap'] else 'N/A', '-'],
+    ]
+    metrics_table = Table(metrics_data, colWidths=[2*inch, 2*inch, 2*inch])
+    metrics_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1e293b')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#e2e8f0')),
+        ('FONTSIZE', (0, 1), (-1, -1), 10),
+        ('TOPPADDING', (0, 1), (-1, -1), 6),
+        ('BOTTOMPADDING', (0, 1), (-1, -1), 6),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f8fafc')]),
+    ]))
+    story.append(metrics_table)
+    story.append(Spacer(1, 30))
+    
+    # Disclaimer
+    disclaimer_style = ParagraphStyle(
+        'Disclaimer',
+        parent=styles['Normal'],
+        fontSize=8,
+        textColor=colors.HexColor('#94a3b8'),
+        spaceBefore=20
+    )
+    story.append(Paragraph(
+        "DISCLAIMER: This report is for educational purposes only and does not constitute financial advice. "
+        "Always consult a qualified financial advisor before making investment decisions. Past performance is not "
+        "indicative of future results.",
+        disclaimer_style
+    ))
+    
+    doc.build(story)
+    buffer.seek(0)
+    return buffer
 
+# ============================================================================
+# MAIN APPLICATION
+# ============================================================================
 def main():
-    
     # Header
     st.markdown(f'''
     <div class="main-header">
-        <h1>🎯 NYZTrade - Industry Stock Screener</h1>
-        <h3>Professional Stock Screening Across {TOTAL_CATEGORIES} Indian Industries</h3>
-        <p>Real Industry Benchmarks • {TOTAL_STOCKS:,} Stock Universe</p>
+        <h1>🎯 NYZTrade Comprehensive Platform</h1>
+        <h3>Professional Stock Analysis & Industry Screening</h3>
+        <p>Advanced Valuation • {TOTAL_CATEGORIES} Industries • {TOTAL_STOCKS:,} Stock Universe</p>
     </div>
     ''', unsafe_allow_html=True)
     
@@ -9841,15 +10500,26 @@ def main():
     ''', unsafe_allow_html=True)
     
     # Sidebar
-    st.sidebar.header("🔧 Analysis Controls")
+    with st.sidebar:
+        st.markdown("### 🔐 Account")
+        st.markdown(f"**User:** {st.session_state.get('authenticated_user', 'Guest').title()}")
+        
+        if st.button("🚪 Logout", use_container_width=True):
+            for key in list(st.session_state.keys()):
+                del st.session_state[key]
+            st.rerun()
+        
+        st.markdown("---")
+        st.markdown("### 🔧 Analysis Mode")
+        
+        # Mode selection
+        mode = st.selectbox(
+            "Choose Mode",
+            ["🎯 Industry Screener", "📈 Individual Analysis", "📊 Industry Explorer"]
+        )
     
-    # Mode selection
-    mode = st.sidebar.selectbox(
-        "Choose Mode",
-        ["🎯 Stock Screener", "📈 Individual Analysis", "📊 Industry Explorer"]
-    )
-    
-    if mode == "🎯 Stock Screener":
+    # Mode-specific content
+    if mode == "🎯 Industry Screener":
         
         st.markdown("### 🎯 Industry-Based Stock Screener")
         
@@ -10003,147 +10673,250 @@ def main():
         if selected_ticker and st.sidebar.button("🚀 Analyze", type="primary"):
             
             with st.spinner(f"Analyzing {selected_ticker}..."):
-                analysis, error = analyze_individual_stock(selected_ticker)
+                info, error = fetch_stock_data(selected_ticker)
             
-            if error:
-                st.error(f"❌ {error}")
-            elif analysis:
-                # Display analysis
-                st.markdown(f"# {analysis['company']}")
-                st.markdown(f"**{analysis['ticker']} • {analysis['industry']} • {analysis['sector']}**")
+            if error or not info:
+                st.error(f"❌ Error: {error if error else 'Failed to fetch stock data'}")
+                st.stop()
+            
+            vals = calculate_valuations(info)
+            if not vals:
+                st.error("❌ Unable to calculate valuations for this stock")
+                st.stop()
+            
+            # Extract company info
+            company = info.get('longName', selected_ticker)
+            sector = info.get('sector', 'N/A')
+            industry = info.get('industry', 'N/A')
+            
+            # Company Header
+            st.markdown(f'''
+            <div class="company-header">
+                <div class="company-title">{company}</div>
+                <div class="company-info">
+                    🏷️ {selected_ticker} • 🏢 {sector} • 🏭 {industry}
+                </div>
+            </div>
+            ''', unsafe_allow_html=True)
+            
+            # Calculate average values
+            ups = [v for v in [vals['upside_pe'], vals['upside_ev']] if v is not None]
+            avg_up = np.mean(ups) if ups else 0
+            fairs = [v for v in [vals['fair_value_pe'], vals['fair_value_ev']] if v is not None]
+            avg_fair = np.mean(fairs) if fairs else vals['price']
+            
+            # Main metrics row
+            col1, col2 = st.columns([2, 1])
+            
+            with col1:
+                # Fair Value Card
+                st.markdown(f'''
+                <div class="fair-value-card">
+                    <div class="fair-value-title">📊 Calculated Fair Value</div>
+                    <div class="fair-value-amount">₹{avg_fair:,.2f}</div>
+                    <div class="fair-value-details">
+                        Current Price: ₹{vals["price"]:,.2f}<br>
+                        {"📈" if avg_up > 0 else "📉"} {avg_up:+.2f}% Potential
+                    </div>
+                </div>
+                ''', unsafe_allow_html=True)
+            
+            with col2:
+                # Recommendation
+                if avg_up > 25:
+                    rec_class, rec_text, rec_icon = "rec-strong-buy", "Strong Buy", "🚀"
+                elif avg_up > 15:
+                    rec_class, rec_text, rec_icon = "rec-buy", "Buy", "✅"
+                elif avg_up > 0:
+                    rec_class, rec_text, rec_icon = "rec-buy", "Hold", "📥"
+                elif avg_up > -10:
+                    rec_class, rec_text, rec_icon = "rec-hold", "Hold", "⏸️"
+                else:
+                    rec_class, rec_text, rec_icon = "rec-avoid", "Avoid", "⚠️"
                 
-                # Key metrics
-                col1, col2, col3, col4 = st.columns(4)
+                st.markdown(f'''
+                <div class="recommendation-card {rec_class}">
+                    <h3>{rec_icon} {rec_text}</h3>
+                    <p>Expected Return: {avg_up:+.2f}%</p>
+                </div>
+                ''', unsafe_allow_html=True)
                 
-                with col1:
-                    st.metric("Current Price", f"₹{analysis['price']:,.2f}")
-                
-                with col2:
-                    if analysis['fair_value']:
-                        upside_delta = f"{analysis['upside']:+.1f}%"
-                        delta_color = "normal" if analysis['upside'] > 0 else "inverse"
-                        st.metric(
-                            "Fair Value",
-                            f"₹{analysis['fair_value']:,.2f}",
-                            delta=upside_delta,
-                            delta_color=delta_color
-                        )
-                    else:
-                        st.metric("Fair Value", "N/A")
-                
-                with col3:
-                    # Recommendation based on upside
-                    if analysis['upside'] > 25:
-                        rec = "🚀 Strong Buy"
-                    elif analysis['upside'] > 15:
-                        rec = "✅ Buy"
-                    elif analysis['upside'] > 0:
-                        rec = "📊 Hold"
-                    else:
-                        rec = "⚠️ Avoid"
-                    st.metric("Recommendation", rec)
-                
-                with col4:
-                    # 52-week position
-                    if analysis['fundamentals']['pct_from_high'] is not None:
-                        range_pos = 100 + analysis['fundamentals']['pct_from_high']
-                        pos_emoji = "🟢" if range_pos > 80 else "🟡" if range_pos > 60 else "🟠" if range_pos > 40 else "🔴"
-                        st.metric("52W Position", f"{pos_emoji} {range_pos:.0f}%")
-                    else:
-                        st.metric("52W Position", "N/A")
-                
-                st.markdown("---")
-                
-                # Detailed metrics in tabs
-                tab1, tab2, tab3 = st.tabs(["📊 Fundamentals", "📈 Performance", "💼 Details"])
-                
-                with tab1:
-                    col1, col2, col3 = st.columns(3)
-                    
-                    fund = analysis['fundamentals']
-                    bench = analysis['benchmarks']
-                    
-                    with col1:
-                        pe = fund['trailing_pe']
-                        if pe:
-                            pe_vs_sector = pe - bench['pe']
-                            st.metric(
-                                "PE Ratio",
-                                f"{pe:.2f}x",
-                                delta=f"{pe_vs_sector:+.1f}x vs sector",
-                                delta_color="inverse" if pe_vs_sector > 0 else "normal"
-                            )
-                        else:
-                            st.metric("PE Ratio", "N/A")
-                    
-                    with col2:
-                        pb = fund['pb_ratio']
-                        if pb:
-                            pb_vs_sector = pb - bench['pb']
-                            st.metric(
-                                "PB Ratio",
-                                f"{pb:.2f}x",
-                                delta=f"{pb_vs_sector:+.1f}x vs sector",
-                                delta_color="inverse" if pb_vs_sector > 0 else "normal"
-                            )
-                        else:
-                            st.metric("PB Ratio", "N/A")
-                    
-                    with col3:
-                        roe = fund['roe']
-                        if roe:
-                            roe_pct = roe * 100
-                            roe_vs_sector = roe_pct - bench['roe']
-                            st.metric(
-                                "ROE",
-                                f"{roe_pct:.1f}%",
-                                delta=f"{roe_vs_sector:+.1f}pp vs sector",
-                                delta_color="normal" if roe_vs_sector > 0 else "inverse"
-                            )
-                        else:
-                            st.metric("ROE", "N/A")
-                
-                with tab2:
-                    fund = analysis['fundamentals']
-                    if fund['pct_from_high'] is not None:
-                        col1, col2 = st.columns(2)
-                        
-                        with col1:
-                            st.metric("From 52W High", f"{fund['pct_from_high']:+.1f}%")
-                            st.metric("From 52W Low", f"{fund['pct_from_low']:+.1f}%")
-                        
-                        with col2:
-                            # Visual 52-week position
-                            current_position = ((fund['price'] - fund['52w_low']) / (fund['52w_high'] - fund['52w_low'])) * 100
-                            st.markdown("**52-Week Position**")
-                            st.progress(current_position / 100)
-                            st.caption(f"{current_position:.1f}% of range")
-                            
-                            if current_position > 80:
-                                st.success("🟢 Very Strong")
-                            elif current_position > 60:
-                                st.info("🟡 Strong")
-                            elif current_position > 40:
-                                st.warning("🟠 Moderate")
-                            else:
-                                st.error("🔴 Weak")
-                    else:
-                        st.info("52-week data not available")
-                
-                with tab3:
-                    fund = analysis['fundamentals']
-                    
-                    col1, col2 = st.columns(2)
-                    
-                    with col1:
-                        st.metric("Market Cap", f"₹{fund['market_cap']/10000000:,.0f} Cr" if fund['market_cap'] else "N/A")
-                        st.metric("Beta", f"{fund['beta']:.2f}" if fund['beta'] else "N/A")
-                        st.metric("Dividend Yield", f"{fund['dividend_yield']*100:.2f}%" if fund['dividend_yield'] else "N/A")
-                    
-                    with col2:
-                        st.metric("Profit Margin", f"{fund['profit_margin']*100:.1f}%" if fund['profit_margin'] else "N/A")
-                        st.metric("Debt/Equity", f"{fund['debt_to_equity']:.2f}" if fund['debt_to_equity'] else "N/A")
-                        st.metric("Volume", f"{fund['volume']:,}" if fund['volume'] else "N/A")
+                # PDF Download
+                pdf = create_pdf_report(company, selected_ticker, sector, vals)
+                st.download_button(
+                    "📥 Download PDF Report",
+                    data=pdf,
+                    file_name=f"NYZTrade_{selected_ticker}_{datetime.now().strftime('%Y%m%d')}.pdf",
+                    mime="application/pdf",
+                    use_container_width=True
+                )
+            
+            # Key Metrics Cards
+            st.markdown('<div class="section-header">📊 Key Metrics</div>', unsafe_allow_html=True)
+            
+            m1, m2, m3, m4, m5, m6 = st.columns(6)
+            
+            metrics_data = [
+                (m1, "💰", f"₹{vals['price']:,.2f}", "Current Price"),
+                (m2, "📈", f"{vals['trailing_pe']:.2f}x" if vals['trailing_pe'] else "N/A", "PE Ratio"),
+                (m3, "💵", f"₹{vals['trailing_eps']:.2f}" if vals['trailing_eps'] else "N/A", "EPS (TTM)"),
+                (m4, "🏦", f"₹{vals['market_cap']/10000000:,.0f}Cr" if vals['market_cap'] else "N/A", "Market Cap"),
+                (m5, "📊", f"{vals['current_ev_ebitda']:.2f}x" if vals['current_ev_ebitda'] else "N/A", "EV/EBITDA"),
+                (m6, "📚", f"{vals['pb_ratio']:.2f}x" if vals['pb_ratio'] else "N/A", "P/B Ratio")
+            ]
+            
+            for col, icon, value, label in metrics_data:
+                with col:
+                    st.markdown(f'''
+                    <div class="metric-card">
+                        <div style="font-size: 2rem;">{icon}</div>
+                        <div class="metric-value">{value}</div>
+                        <div class="metric-label">{label}</div>
+                    </div>
+                    ''', unsafe_allow_html=True)
+            
+            # Charts Section
+            st.markdown("---")
+            
+            chart_col1, chart_col2 = st.columns(2)
+            
+            with chart_col1:
+                st.markdown('<div class="section-header">🎯 Valuation Gauges</div>', unsafe_allow_html=True)
+                if vals['upside_pe'] is not None or vals['upside_ev'] is not None:
+                    fig_gauge = create_gauge_chart(
+                        vals['upside_pe'] if vals['upside_pe'] else 0,
+                        vals['upside_ev'] if vals['upside_ev'] else 0
+                    )
+                    st.plotly_chart(fig_gauge, use_container_width=True)
+                else:
+                    st.info("Insufficient data for gauge charts")
+            
+            with chart_col2:
+                st.markdown('<div class="section-header">📊 Price vs Fair Value</div>', unsafe_allow_html=True)
+                fig_bar = create_valuation_comparison_chart(vals)
+                if fig_bar:
+                    st.plotly_chart(fig_bar, use_container_width=True)
+                else:
+                    st.info("Insufficient data for comparison chart")
+            
+            # Additional Chart
+            st.markdown('<div class="section-header">📍 52-Week Range</div>', unsafe_allow_html=True)
+            range_html = create_52week_range_display(vals)
+            if range_html:
+                st.markdown(range_html, unsafe_allow_html=True)
+            else:
+                st.info("52-week data not available")
+            
+            # Detailed Valuation Methods
+            st.markdown("---")
+            st.markdown('<div class="section-header">📋 Valuation Breakdown</div>', unsafe_allow_html=True)
+            
+            val_col1, val_col2 = st.columns(2)
+            
+            with val_col1:
+                if vals['fair_value_pe'] and vals['trailing_pe']:
+                    st.markdown(f'''
+                    <div class="valuation-box">
+                        <div class="valuation-method">📈 PE Multiple Method</div>
+                        <div class="valuation-row">
+                            <span class="valuation-label">Current PE</span>
+                            <span class="valuation-value">{vals['trailing_pe']:.2f}x</span>
+                        </div>
+                        <div class="valuation-row">
+                            <span class="valuation-label">Industry PE</span>
+                            <span class="valuation-value">{vals['industry_pe']:.2f}x</span>
+                        </div>
+                        <div class="valuation-row">
+                            <span class="valuation-label">EPS (TTM)</span>
+                            <span class="valuation-value">₹{vals['trailing_eps']:.2f}</span>
+                        </div>
+                        <div class="valuation-row">
+                            <span class="valuation-label">Fair Value (PE)</span>
+                            <span class="valuation-value">₹{vals['fair_value_pe']:,.2f}</span>
+                        </div>
+                        <div class="valuation-row">
+                            <span class="valuation-label">Upside (PE)</span>
+                            <span class="valuation-value">{vals['upside_pe']:+.2f}%</span>
+                        </div>
+                    </div>
+                    ''', unsafe_allow_html=True)
+                else:
+                    st.info("PE valuation not available")
+            
+            with val_col2:
+                if vals['fair_value_ev'] and vals['current_ev_ebitda']:
+                    st.markdown(f'''
+                    <div class="valuation-box">
+                        <div class="valuation-method">💼 EV/EBITDA Method</div>
+                        <div class="valuation-row">
+                            <span class="valuation-label">Current EV/EBITDA</span>
+                            <span class="valuation-value">{vals['current_ev_ebitda']:.2f}x</span>
+                        </div>
+                        <div class="valuation-row">
+                            <span class="valuation-label">Industry EV/EBITDA</span>
+                            <span class="valuation-value">{vals['industry_ev_ebitda']:.2f}x</span>
+                        </div>
+                        <div class="valuation-row">
+                            <span class="valuation-label">EBITDA</span>
+                            <span class="valuation-value">₹{vals['ebitda']/10000000:,.0f} Cr</span>
+                        </div>
+                        <div class="valuation-row">
+                            <span class="valuation-label">Fair Value (EV)</span>
+                            <span class="valuation-value">₹{vals['fair_value_ev']:,.2f}</span>
+                        </div>
+                        <div class="valuation-row">
+                            <span class="valuation-label">Upside (EV)</span>
+                            <span class="valuation-value">{vals['upside_ev']:+.2f}%</span>
+                        </div>
+                    </div>
+                    ''', unsafe_allow_html=True)
+                else:
+                    st.info("EV/EBITDA valuation not available")
+            
+            # Financial Data Table
+            st.markdown("---")
+            st.markdown('<div class="section-header">📊 Complete Financial Summary</div>', unsafe_allow_html=True)
+            
+            financial_data = pd.DataFrame({
+                'Metric': [
+                    'Current Price', 'Market Cap', 'Enterprise Value', 
+                    'PE Ratio (TTM)', 'Forward PE', 'EV/EBITDA',
+                    'P/B Ratio', 'P/S Ratio', 'EPS (TTM)',
+                    'EBITDA', 'Book Value', 'Net Debt',
+                    '52W High', '52W Low', 'Beta',
+                    'Dividend Yield', 'ROE', 'Profit Margin'
+                ],
+                'Value': [
+                    f"₹{vals['price']:,.2f}",
+                    f"₹{vals['market_cap']/10000000:,.0f} Cr" if vals['market_cap'] else 'N/A',
+                    f"₹{vals['enterprise_value']/10000000:,.0f} Cr" if vals['enterprise_value'] else 'N/A',
+                    f"{vals['trailing_pe']:.2f}x" if vals['trailing_pe'] else 'N/A',
+                    f"{vals['forward_pe']:.2f}x" if vals['forward_pe'] else 'N/A',
+                    f"{vals['current_ev_ebitda']:.2f}x" if vals['current_ev_ebitda'] else 'N/A',
+                    f"{vals['pb_ratio']:.2f}x" if vals['pb_ratio'] else 'N/A',
+                    f"{vals['ps_ratio']:.2f}x" if vals['ps_ratio'] else 'N/A',
+                    f"₹{vals['trailing_eps']:.2f}" if vals['trailing_eps'] else 'N/A',
+                    f"₹{vals['ebitda']/10000000:,.0f} Cr" if vals['ebitda'] else 'N/A',
+                    f"₹{vals['book_value']:.2f}" if vals['book_value'] else 'N/A',
+                    f"₹{vals['net_debt']/10000000:,.0f} Cr",
+                    f"₹{vals['52w_high']:,.2f}" if vals['52w_high'] else 'N/A',
+                    f"₹{vals['52w_low']:,.2f}" if vals['52w_low'] else 'N/A',
+                    f"{vals['beta']:.2f}" if vals['beta'] else 'N/A',
+                    f"{vals['dividend_yield']*100:.2f}%" if vals['dividend_yield'] else 'N/A',
+                    f"{vals['roe']*100:.2f}%" if vals['roe'] else 'N/A',
+                    f"{vals['profit_margin']*100:.2f}%" if vals['profit_margin'] else 'N/A'
+                ]
+            })
+            
+            st.dataframe(
+                financial_data,
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "Metric": st.column_config.TextColumn("📊 Metric", width="medium"),
+                    "Value": st.column_config.TextColumn("📈 Value", width="medium")
+                }
+            )
     
     elif mode == "📊 Industry Explorer":
         
@@ -10205,6 +10978,40 @@ def main():
             if st.expander(f"View all {len(industry_stocks)} stocks"):
                 stocks_df = pd.DataFrame(list(industry_stocks.items()), columns=['Ticker', 'Company'])
                 st.dataframe(stocks_df, use_container_width=True, hide_index=True)
+    
+    else:
+        # Welcome screen
+        st.markdown('''
+        <div class="welcome-section">
+            <div class="welcome-title">👋 Welcome to NYZTrade Platform</div>
+            <div class="welcome-subtitle">Your comprehensive solution for stock analysis and industry screening</div>
+            
+            <div class="feature-list">
+                <h4>🎯 Platform Features:</h4>
+                <ul>
+                    <li>🔍 <strong>Industry Screener:</strong> Advanced filtering with 5 proven strategies</li>
+                    <li>📈 <strong>Individual Analysis:</strong> Multi-factor valuation (PE, EV/EBITDA, P/B)</li>
+                    <li>📊 <strong>Professional Charts:</strong> Interactive visualizations and gauges</li>
+                    <li>📥 <strong>PDF Reports:</strong> Downloadable professional analysis reports</li>
+                    <li>🎯 <strong>Buy/Sell Recommendations:</strong> AI-powered investment guidance</li>
+                    <li>📋 <strong>Complete Metrics:</strong> 50+ financial indicators per stock</li>
+                </ul>
+            </div>
+        </div>
+        ''', unsafe_allow_html=True)
+    
+    # Footer
+    st.markdown('''
+    <div class="footer">
+        <h3>NYZTrade Comprehensive Platform</h3>
+        <p>Professional Stock Analysis & Industry Screening Solution</p>
+        <div class="disclaimer">
+            ⚠️ Disclaimer: This platform is for educational and research purposes only. 
+            Always consult a qualified financial advisor before making investment decisions.
+            Past performance does not guarantee future results.
+        </div>
+    </div>
+    ''', unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
