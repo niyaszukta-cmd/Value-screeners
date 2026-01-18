@@ -1488,11 +1488,19 @@ with st.sidebar:
             )
             
             # Override default criteria with consistent float types
+            # Dynamic min/max values based on strategy type
+            if strategy_config.get('strategy_type') == 'overvalued':
+                upside_min_range = -200.0
+                upside_max_range = 50.0
+            else:
+                upside_min_range = 0.0
+                upside_max_range = 100.0
+            
             custom_upside_min = st.number_input(
                 "Custom Min Upside %", 
                 value=float(strategy_config.get('upside_min', 15)), 
-                min_value=0.0, 
-                max_value=100.0, 
+                min_value=upside_min_range, 
+                max_value=upside_max_range, 
                 step=5.0
             )
             
@@ -1546,63 +1554,260 @@ with st.sidebar:
         run_screener = st.button("🚀 RUN SECTOR SCREENER", use_container_width=True, type="primary")
     
     else:  # Individual Stock Analysis
-        st.markdown("### 📈 Individual Stock Analysis")
+        # ============================================
+        # ENHANCED INDIVIDUAL STOCK ANALYSIS UI
+        # ============================================
+        st.markdown("### 📈 Professional Stock Analysis")
         
-        # Sector selection for browsing
-        browse_sector = st.selectbox(
-            "🔍 Browse by Sector",
-            ['All Sectors'] + list(SECTOR_MAPPING.keys()),
-            help="Filter stocks by sector for analysis"
+        # Enhanced sector selection with statistics
+        st.markdown("#### 🏢 Sector Selection")
+        
+        # Create enhanced sector options with icons and stock counts
+        sector_options_enhanced = ['🌐 All Sectors (8,984 stocks)']
+        for sector in SECTOR_MAPPING.keys():
+            stock_count = get_sector_stock_count(sector)
+            sector_icon = get_sector_icon(sector)
+            sector_options_enhanced.append(f"{sector_icon} {sector} ({stock_count:,} stocks)")
+        
+        selected_browse_option = st.selectbox(
+            "Choose Analysis Sector",
+            sector_options_enhanced,
+            help="Select sector to browse stocks or choose All Sectors for complete universe",
+            key="browse_sector_enhanced"
         )
         
-        # Get stocks for selected sector
-        if browse_sector == 'All Sectors':
+        # Extract sector name
+        if selected_browse_option.startswith('🌐 All Sectors'):
+            browse_sector = 'All Sectors'
             available_stocks = {}
             for category, stocks in INDIAN_STOCKS.items():
                 available_stocks.update(stocks)
         else:
+            browse_sector = selected_browse_option.split(" (")[0].split(" ", 1)[1]  # Remove icon and count
             categories = SECTOR_MAPPING[browse_sector]
             available_stocks = get_stocks_in_categories(categories)
         
-        # Search functionality
-        search = st.text_input(
-            "🔍 Search Stocks",
-            placeholder="Company name or ticker...",
-            help="Search by company name or ticker symbol"
-        )
+        # Display sector info with enhanced styling
+        if browse_sector != 'All Sectors':
+            sector_icon = get_sector_icon(browse_sector)
+            stock_count = len(available_stocks)
+            st.markdown(f'''
+            <div style="background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(147, 197, 253, 0.1)); 
+                        border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 12px; padding: 15px; margin: 15px 0;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="font-size: 2rem;">{sector_icon}</div>
+                    <div>
+                        <div style="font-size: 1.1rem; font-weight: bold; color: #3b82f6;">{browse_sector} Analysis</div>
+                        <div style="color: #64748b; font-size: 0.9rem;">📊 {stock_count:,} stocks available • 🧮 Dynamic benchmarks ready</div>
+                    </div>
+                </div>
+            </div>
+            ''', unsafe_allow_html=True)
+        else:
+            st.markdown(f'''
+            <div style="background: linear-gradient(135deg, rgba(167, 139, 250, 0.1), rgba(196, 181, 253, 0.1)); 
+                        border: 1px solid rgba(167, 139, 250, 0.3); border-radius: 12px; padding: 15px; margin: 15px 0;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="font-size: 2rem;">🌐</div>
+                    <div>
+                        <div style="font-size: 1.1rem; font-weight: bold; color: #a78bfa;">Complete Market Analysis</div>
+                        <div style="color: #64748b; font-size: 0.9rem;">📊 {len(available_stocks):,} stocks across all sectors • 🔍 Advanced search enabled</div>
+                    </div>
+                </div>
+            </div>
+            ''', unsafe_allow_html=True)
         
+        st.markdown("---")
+        
+        # ============================================
+        # ENHANCED STOCK SEARCH & SELECTION
+        # ============================================
+        st.markdown("#### 🔍 Smart Stock Search")
+        
+        # Enhanced search with multiple search modes
+        col1, col2 = st.columns([3, 1])
+        
+        with col1:
+            search = st.text_input(
+                "Search Stocks",
+                placeholder="🔎 Type company name or ticker (e.g., 'Reliance', 'TCS', 'INFY.NS')...",
+                help="Search by company name or ticker symbol - supports partial matches",
+                key="enhanced_search"
+            )
+        
+        with col2:
+            search_mode = st.selectbox(
+                "Search Mode",
+                ["🎯 Smart Match", "📝 Exact Match", "🔤 Start With"],
+                help="Choose search matching method"
+            )
+        
+        # Advanced filtering and search logic
         if search:
             search_upper = search.upper()
-            filtered_stocks = {
-                ticker: name for ticker, name in available_stocks.items()
-                if search_upper in ticker.upper() or search_upper in name.upper()
-            }
-        else:
-            # Show first 100 stocks for performance
-            filtered_stocks = dict(list(available_stocks.items())[:100])
-        
-        st.info(f"Showing {len(filtered_stocks)} stocks for value analysis")
-        
-        if filtered_stocks:
-            stock_options = [f"{name} ({ticker})" for ticker, name in filtered_stocks.items()]
-            selected_stock = st.selectbox("🎯 Select Stock", [""] + stock_options)
             
-            if selected_stock:
-                ticker = selected_stock.split("(")[1].strip(")")
-                st.session_state.selected_stock_ticker = ticker
+            if search_mode == "🎯 Smart Match":
+                filtered_stocks = {
+                    ticker: name for ticker, name in available_stocks.items()
+                    if search_upper in ticker.upper() or search_upper in name.upper()
+                }
+            elif search_mode == "📝 Exact Match":
+                filtered_stocks = {
+                    ticker: name for ticker, name in available_stocks.items()
+                    if search_upper == ticker.upper() or search_upper == name.upper()
+                }
+            else:  # Start With
+                filtered_stocks = {
+                    ticker: name for ticker, name in available_stocks.items()
+                    if ticker.upper().startswith(search_upper) or name.upper().startswith(search_upper)
+                }
+        else:
+            # Show top 50 stocks for performance when no search
+            filtered_stocks = dict(list(available_stocks.items())[:50])
         
-        # Manual ticker input
+        # Enhanced results display
+        if search:
+            if filtered_stocks:
+                st.markdown(f'''
+                <div style="background: rgba(34, 197, 94, 0.1); border: 1px solid rgba(34, 197, 94, 0.3); 
+                           border-radius: 8px; padding: 10px; margin: 10px 0;">
+                    <div style="color: #22c55e; font-weight: 500;">
+                        ✅ Found {len(filtered_stocks)} matching stocks
+                    </div>
+                </div>
+                ''', unsafe_allow_html=True)
+            else:
+                st.markdown(f'''
+                <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); 
+                           border-radius: 8px; padding: 10px; margin: 10px 0;">
+                    <div style="color: #ef4444; font-weight: 500;">
+                        ❌ No stocks match "{search}" - try different keywords
+                    </div>
+                </div>
+                ''', unsafe_allow_html=True)
+        else:
+            st.markdown(f'''
+            <div style="background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3); 
+                       border-radius: 8px; padding: 10px; margin: 10px 0;">
+                <div style="color: #3b82f6; font-weight: 500;">
+                    📊 Showing {len(filtered_stocks)} stocks • Start typing to search
+                </div>
+            </div>
+            ''', unsafe_allow_html=True)
+        
+        # ============================================
+        # ENHANCED STOCK SELECTION
+        # ============================================
+        if filtered_stocks:
+            st.markdown("#### 📊 Select Stock for Analysis")
+            
+            # Create enhanced stock options with better formatting
+            stock_options_enhanced = [""]  # Empty option first
+            for ticker, name in sorted(filtered_stocks.items()):
+                # Truncate long names for better display
+                display_name = name if len(name) <= 40 else name[:37] + "..."
+                stock_options_enhanced.append(f"📈 {display_name} ({ticker})")
+            
+            selected_stock_enhanced = st.selectbox(
+                "Choose Stock",
+                stock_options_enhanced,
+                help="Select a stock for comprehensive dynamic analysis",
+                key="stock_selection_enhanced"
+            )
+            
+            if selected_stock_enhanced:
+                # Extract ticker from enhanced format
+                ticker = selected_stock_enhanced.split("(")[1].strip(")")
+                company_name = selected_stock_enhanced.split("(")[0].replace("📈 ", "").strip()
+                st.session_state.selected_stock_ticker = ticker
+                
+                # Enhanced stock preview
+                st.markdown(f'''
+                <div style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(52, 211, 153, 0.1)); 
+                           border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 12px; padding: 15px; margin: 15px 0;">
+                    <div style="display: flex; align-items: center; gap: 15px;">
+                        <div style="font-size: 2.5rem;">📈</div>
+                        <div style="flex: 1;">
+                            <div style="font-size: 1.2rem; font-weight: bold; color: #059669;">{company_name}</div>
+                            <div style="color: #64748b; font-size: 0.9rem; margin-top: 5px;">
+                                🏷️ Ticker: {ticker} • 🏢 Sector: {browse_sector if browse_sector != 'All Sectors' else 'Multi-Sector'} • 🧮 Dynamic Analysis Ready
+                            </div>
+                        </div>
+                        <div style="background: rgba(16, 185, 129, 0.2); border-radius: 8px; padding: 8px 12px;">
+                            <div style="color: #059669; font-weight: 600; font-size: 0.8rem;">SELECTED</div>
+                        </div>
+                    </div>
+                </div>
+                ''', unsafe_allow_html=True)
+        
         st.markdown("---")
-        manual_ticker = st.text_input(
-            "✏️ Manual Ticker Entry",
-            placeholder="e.g., RELIANCE.NS",
-            help="Enter any NSE/BSE ticker for analysis"
-        )
+        
+        # ============================================
+        # ENHANCED MANUAL TICKER INPUT
+        # ============================================
+        st.markdown("#### ✏️ Direct Ticker Entry")
+        
+        col1, col2 = st.columns([2, 1])
+        
+        with col1:
+            manual_ticker = st.text_input(
+                "Enter Ticker Directly",
+                placeholder="e.g., RELIANCE.NS, TCS.NS, HDFCBANK.NS",
+                help="Enter any NSE/BSE ticker symbol for analysis",
+                key="manual_ticker_enhanced"
+            )
+        
+        with col2:
+            if st.button("🔍 Validate Ticker", use_container_width=True):
+                if manual_ticker:
+                    # Quick validation attempt
+                    test_info, test_error = fetch_stock_data(manual_ticker.upper())
+                    if not test_error:
+                        st.success("✅ Valid ticker!")
+                    else:
+                        st.error("❌ Invalid ticker")
         
         if manual_ticker:
-            st.session_state.selected_stock_ticker = manual_ticker.upper()
+            ticker_upper = manual_ticker.upper()
+            st.session_state.selected_stock_ticker = ticker_upper
+            
+            # Enhanced manual ticker preview
+            st.markdown(f'''
+            <div style="background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(129, 140, 248, 0.1)); 
+                       border: 1px solid rgba(99, 102, 241, 0.3); border-radius: 12px; padding: 15px; margin: 15px 0;">
+                <div style="display: flex; align-items: center; gap: 15px;">
+                    <div style="font-size: 2.5rem;">✏️</div>
+                    <div style="flex: 1;">
+                        <div style="font-size: 1.2rem; font-weight: bold; color: #6366f1;">Direct Ticker Entry</div>
+                        <div style="color: #64748b; font-size: 0.9rem; margin-top: 5px;">
+                            🏷️ Ticker: {ticker_upper} • ⚡ Manual Input • 🧮 Ready for Dynamic Analysis
+                        </div>
+                    </div>
+                    <div style="background: rgba(99, 102, 241, 0.2); border-radius: 8px; padding: 8px 12px;">
+                        <div style="color: #6366f1; font-weight: 600; font-size: 0.8rem;">MANUAL</div>
+                    </div>
+                </div>
+            </div>
+            ''', unsafe_allow_html=True)
         
-        analyze_stock = st.button("📊 ANALYZE STOCK", use_container_width=True, type="primary")
+        st.markdown("---")
+        
+        # ============================================
+        # ENHANCED ANALYSIS BUTTON
+        # ============================================
+        if hasattr(st.session_state, 'selected_stock_ticker'):
+            selected_ticker = st.session_state.selected_stock_ticker
+            analyze_stock = st.button(
+                f"🚀 ANALYZE {selected_ticker} WITH DYNAMIC BENCHMARKS", 
+                use_container_width=True, 
+                type="primary"
+            )
+        else:
+            analyze_stock = st.button(
+                "📊 SELECT A STOCK FOR ANALYSIS", 
+                use_container_width=True, 
+                disabled=True
+            )
 
 # ============================================================================
 # MAIN CONTENT - VALUE-BASED SCREENERS
@@ -1717,69 +1922,147 @@ elif mode == "📈 Individual Stock Analysis":
             analysis, error = analyze_individual_stock_dynamic(ticker)
         
         if analysis:
-            # Display analysis with dynamic benchmarks
+            # Enhanced header with company info
             st.markdown(f'''
-            <div class="highlight-box">
-                <h2>{analysis['company']}</h2>
-                <div style="display: flex; flex-wrap: wrap; gap: 20px; color: #a78bfa;">
-                    <span>🏷️ <strong>{analysis['ticker']}</strong></span>
-                    <span>🏢 <strong>{analysis['sector']}</strong></span>
-                    <span>💼 <strong>{analysis['cap_type']}</strong></span>
-                    <span>🧮 <strong>Dynamic Benchmarks</strong></span>
+            <div style="background: linear-gradient(135deg, rgba(124, 58, 237, 0.15), rgba(139, 92, 246, 0.15)); 
+                       border: 2px solid rgba(124, 58, 237, 0.3); border-radius: 20px; padding: 30px; margin: 30px 0;
+                       box-shadow: 0 10px 40px rgba(124, 58, 237, 0.1);">
+                <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 20px;">
+                    <div style="flex: 1; min-width: 300px;">
+                        <div style="font-size: 2.2rem; font-weight: bold; color: #7c3aed; margin-bottom: 8px;">
+                            {analysis['company']}
+                        </div>
+                        <div style="display: flex; flex-wrap: wrap; gap: 15px; font-size: 1rem;">
+                            <span style="background: rgba(124, 58, 237, 0.2); color: #7c3aed; padding: 6px 12px; 
+                                        border-radius: 20px; font-weight: 500;">
+                                🏷️ {analysis['ticker']}
+                            </span>
+                            <span style="background: rgba(59, 130, 246, 0.2); color: #3b82f6; padding: 6px 12px; 
+                                        border-radius: 20px; font-weight: 500;">
+                                🏢 {analysis['sector']}
+                            </span>
+                            <span style="background: rgba(16, 185, 129, 0.2); color: #10b981; padding: 6px 12px; 
+                                        border-radius: 20px; font-weight: 500;">
+                                💼 {analysis['cap_type']}
+                            </span>
+                        </div>
+                    </div>
+                    <div style="text-align: center; min-width: 150px;">
+                        <div style="background: rgba(124, 58, 237, 0.2); border-radius: 15px; padding: 15px;">
+                            <div style="font-size: 0.9rem; color: #7c3aed; font-weight: 600; margin-bottom: 5px;">
+                                ANALYSIS STATUS
+                            </div>
+                            <div style="font-size: 1.1rem; color: #059669; font-weight: bold;">
+                                🧮 DYNAMIC READY
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
             ''', unsafe_allow_html=True)
             
-            # Show dynamic benchmarks
+            # Enhanced dynamic benchmarks comparison
             benchmarks = analysis['dynamic_benchmarks']
             if benchmarks:
                 st.markdown(f'''
-                <div class="benchmark-box">
-                    <h4>📊 Dynamic Sector Benchmarks vs Stock Metrics</h4>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin: 15px 0;">
-                        <div>
-                            <strong>Sector Avg PE:</strong> {benchmarks.get('pe', 0):.2f}x<br>
-                            <strong>Stock PE:</strong> {analysis['trailing_pe']:.2f}x<br>
-                            <strong>Ratio:</strong> {(analysis['trailing_pe']/benchmarks.get('pe', 1)):.2f}x
+                <div style="background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.2); 
+                           border-radius: 15px; padding: 25px; margin: 25px 0;">
+                    <h4 style="color: #3b82f6; margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
+                        <span style="font-size: 1.5rem;">📊</span>
+                        Live Sector Benchmarks vs Stock Metrics
+                    </h4>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px;">
+                        <div style="background: rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 20px;">
+                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+                                <span style="font-size: 1.2rem;">💰</span>
+                                <span style="font-weight: 600; color: #1e293b;">PE Ratio Analysis</span>
+                            </div>
+                            <div style="font-size: 0.9rem; line-height: 1.6; color: #64748b;">
+                                <div><strong>Sector Average:</strong> {benchmarks.get('pe', 0):.2f}x</div>
+                                <div><strong>{analysis['ticker']} PE:</strong> {analysis['trailing_pe']:.2f}x</div>
+                                <div style="margin-top: 8px; padding: 8px; background: rgba(59, 130, 246, 0.1); border-radius: 6px;">
+                                    <strong style="color: #3b82f6;">Multiple:</strong> {(analysis['trailing_pe']/benchmarks.get('pe', 1)):.2f}x sector avg
+                                </div>
+                            </div>
                         </div>
-                        <div>
-                            <strong>Sector Avg PB:</strong> {benchmarks.get('pb', 0):.2f}x<br>
-                            <strong>Stock PB:</strong> {analysis['pb_ratio']:.2f}x<br>
-                            <strong>Ratio:</strong> {(analysis['pb_ratio']/benchmarks.get('pb', 1)):.2f}x
+                        
+                        <div style="background: rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 20px;">
+                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+                                <span style="font-size: 1.2rem;">📚</span>
+                                <span style="font-weight: 600; color: #1e293b;">PB Ratio Analysis</span>
+                            </div>
+                            <div style="font-size: 0.9rem; line-height: 1.6; color: #64748b;">
+                                <div><strong>Sector Average:</strong> {benchmarks.get('pb', 0):.2f}x</div>
+                                <div><strong>{analysis['ticker']} PB:</strong> {analysis['pb_ratio']:.2f}x</div>
+                                <div style="margin-top: 8px; padding: 8px; background: rgba(16, 185, 129, 0.1); border-radius: 6px;">
+                                    <strong style="color: #10b981;">Multiple:</strong> {(analysis['pb_ratio']/benchmarks.get('pb', 1)):.2f}x sector avg
+                                </div>
+                            </div>
                         </div>
-                        <div>
-                            <strong>Sector Avg ROE:</strong> {benchmarks.get('roe', 0):.1f}%<br>
-                            <strong>Stock ROE:</strong> {(analysis['roe']*100):.1f}%<br>
-                            <strong>Difference:</strong> {((analysis['roe']*100) - benchmarks.get('roe', 0)):+.1f}pp
+                        
+                        <div style="background: rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 20px;">
+                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+                                <span style="font-size: 1.2rem;">🌱</span>
+                                <span style="font-weight: 600; color: #1e293b;">ROE Comparison</span>
+                            </div>
+                            <div style="font-size: 0.9rem; line-height: 1.6; color: #64748b;">
+                                <div><strong>Sector Average:</strong> {benchmarks.get('roe', 0):.1f}%</div>
+                                <div><strong>{analysis['ticker']} ROE:</strong> {(analysis['roe']*100):.1f}%</div>
+                                <div style="margin-top: 8px; padding: 8px; background: rgba(245, 158, 11, 0.1); border-radius: 6px;">
+                                    <strong style="color: #f59e0b;">Difference:</strong> {((analysis['roe']*100) - benchmarks.get('roe', 0)):+.1f} percentage points
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
                 ''', unsafe_allow_html=True)
             
-            # Main valuation summary with dynamic fair value
-            col1, col2 = st.columns([2, 1])
+            # Enhanced valuation summary with modern cards
+            st.markdown("### 💎 Dynamic Valuation Analysis")
+            
+            col1, col2 = st.columns([3, 2])
             
             with col1:
                 fair_value = analysis['avg_fair_value'] if analysis['avg_fair_value'] else analysis['price']
                 upside = analysis['avg_upside'] if analysis['avg_upside'] else 0
                 
                 st.markdown(f'''
-                <div class="metric-card">
-                    <h3>💎 Valuation Summary</h3>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 15px 0;">
+                <div style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(52, 211, 153, 0.1)); 
+                           border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 20px; padding: 25px; margin-bottom: 20px;">
+                    <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 20px;">
+                        <span style="font-size: 2.5rem;">🧮</span>
                         <div>
-                            <div style="font-size: 1.8rem; font-weight: bold; color: #a78bfa;">₹{fair_value:,.2f}</div>
-                            <div style="color: #94a3b8;">Fair Value</div>
-                        </div>
-                        <div>
-                            <div style="font-size: 1.8rem; font-weight: bold; color: #e2e8f0;">₹{analysis["price"]:,.2f}</div>
-                            <div style="color: #94a3b8;">Current Price</div>
+                            <h3 style="margin: 0; color: #059669;">Dynamic Valuation Summary</h3>
+                            <p style="margin: 5px 0 0 0; color: #6b7280; font-size: 0.9rem;">
+                                Based on real-time {analysis['sector']} sector benchmarks
+                            </p>
                         </div>
                     </div>
-                    <div style="text-align: center; margin-top: 15px;">
-                        <span style="font-size: 1.5rem; font-weight: bold; color: {'#34d399' if upside > 0 else '#f87171'};">
-                            {"📈" if upside > 0 else "📉"} {upside:+.1f}% Potential
-                        </span>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                        <div style="text-align: center; background: rgba(255, 255, 255, 0.2); border-radius: 12px; padding: 15px;">
+                            <div style="font-size: 2rem; font-weight: bold; color: #059669; margin-bottom: 5px;">
+                                ₹{fair_value:,.2f}
+                            </div>
+                            <div style="color: #6b7280; font-size: 0.9rem;">Dynamic Fair Value</div>
+                        </div>
+                        <div style="text-align: center; background: rgba(255, 255, 255, 0.2); border-radius: 12px; padding: 15px;">
+                            <div style="font-size: 2rem; font-weight: bold; color: #374151; margin-bottom: 5px;">
+                                ₹{analysis["price"]:,.2f}
+                            </div>
+                            <div style="color: #6b7280; font-size: 0.9rem;">Current Market Price</div>
+                        </div>
+                    </div>
+                    
+                    <div style="text-align: center; padding: 20px; background: rgba(16, 185, 129, 0.15); border-radius: 15px;">
+                        <div style="font-size: 2.2rem; font-weight: bold; margin-bottom: 8px;">
+                            <span style="color: {'#059669' if upside > 0 else '#dc2626'};">
+                                {"🚀" if upside > 0 else "⚠️"} {upside:+.1f}%
+                            </span>
+                        </div>
+                        <div style="color: #6b7280; font-size: 1rem; font-weight: 500;">
+                            {"Upside Potential" if upside > 0 else "Downside Risk"} (Dynamic Calculation)
+                        </div>
                     </div>
                 </div>
                 ''', unsafe_allow_html=True)
@@ -1789,68 +2072,175 @@ elif mode == "📈 Individual Stock Analysis":
                 pe_ratio = analysis['trailing_pe'] / benchmarks.get('pe', 1) if analysis['trailing_pe'] and benchmarks else 1
                 
                 if upside > 25 and pe_ratio < 1.2:
-                    rec_class, rec_text, rec_icon = "rec-strong-buy", "Strong Buy", "🚀"
+                    rec_class, rec_text, rec_icon, rec_color = "rec-strong-buy", "Strong Buy", "🚀", "#059669"
                 elif upside > 15 and pe_ratio < 1.3:
-                    rec_class, rec_text, rec_icon = "rec-buy", "Buy", "✅"
+                    rec_class, rec_text, rec_icon, rec_color = "rec-buy", "Buy", "✅", "#0d9488"
                 elif upside > 0 and pe_ratio < 1.5:
-                    rec_class, rec_text, rec_icon = "rec-buy", "Hold", "📥"
+                    rec_class, rec_text, rec_icon, rec_color = "rec-hold", "Hold", "📥", "#d97706"
                 elif upside > -10:
-                    rec_class, rec_text, rec_icon = "rec-hold", "Weak Hold", "⏸️"
+                    rec_class, rec_text, rec_icon, rec_color = "rec-hold", "Weak Hold", "⏸️", "#dc6e00"
                 else:
-                    rec_class, rec_text, rec_icon = "rec-avoid", "Avoid", "⚠️"
+                    rec_class, rec_text, rec_icon, rec_color = "rec-avoid", "Avoid", "⚠️", "#dc2626"
                 
                 st.markdown(f'''
-                <div class="recommendation {rec_class}">
-                    <div style="font-size: 2rem; margin-bottom: 10px;">{rec_icon}</div>
-                    <div style="font-size: 1.3rem; font-weight: bold;">{rec_text}</div>
-                    <div style="font-size: 0.9rem; margin-top: 5px;">Expected: {upside:+.1f}%</div>
-                    <div style="font-size: 0.8rem; margin-top: 3px;">PE: {pe_ratio:.2f}x sector avg</div>
+                <div style="background: linear-gradient(135deg, {rec_color}15, {rec_color}08); 
+                           border: 2px solid {rec_color}40; border-radius: 20px; padding: 25px; 
+                           text-align: center; height: 100%; display: flex; flex-direction: column; justify-content: center;">
+                    <div style="font-size: 3.5rem; margin-bottom: 15px;">{rec_icon}</div>
+                    <div style="font-size: 1.8rem; font-weight: bold; color: {rec_color}; margin-bottom: 10px;">
+                        {rec_text}
+                    </div>
+                    <div style="background: {rec_color}20; border-radius: 10px; padding: 12px; margin-bottom: 15px;">
+                        <div style="color: {rec_color}; font-weight: 600; font-size: 1.1rem;">
+                            Expected: {upside:+.1f}%
+                        </div>
+                    </div>
+                    <div style="color: #6b7280; font-size: 0.9rem; line-height: 1.4;">
+                        PE: {pe_ratio:.2f}x sector avg<br>
+                        Risk Level: {"Low" if upside > 15 else "Medium" if upside > 0 else "High"}
+                    </div>
                 </div>
                 ''', unsafe_allow_html=True)
             
-            # Key metrics grid with sector comparison
+            # Enhanced key metrics with modern card design
+            st.markdown("### 📊 Key Financial Metrics")
+            
             col1, col2, col3, col4, col5, col6 = st.columns(6)
             
-            metrics = [
-                (col1, "💰", f"₹{analysis['price']:,.2f}", "Price"),
-                (col2, "📈", f"{analysis['trailing_pe']:.2f}" if analysis['trailing_pe'] else "N/A", "PE Ratio"),
-                (col3, "📚", f"{analysis['pb_ratio']:.2f}" if analysis['pb_ratio'] else "N/A", "P/B Ratio"),
-                (col4, "🏦", f"₹{analysis['market_cap']/10000000:,.0f}Cr" if analysis['market_cap'] else "N/A", "Market Cap"),
-                (col5, "💵", f"{analysis['dividend_yield']*100:.2f}%" if analysis['dividend_yield'] else "N/A", "Dividend"),
-                (col6, "📊", f"{analysis['beta']:.2f}" if analysis['beta'] else "N/A", "Beta")
+            metrics_data = [
+                (col1, "💰", f"₹{analysis['price']:,.2f}", "Current Price", "#3b82f6"),
+                (col2, "📈", f"{analysis['trailing_pe']:.2f}" if analysis['trailing_pe'] else "N/A", "P/E Ratio", "#8b5cf6"),
+                (col3, "📚", f"{analysis['pb_ratio']:.2f}" if analysis['pb_ratio'] else "N/A", "P/B Ratio", "#10b981"),
+                (col4, "🏦", f"₹{analysis['market_cap']/10000000:,.0f}Cr" if analysis['market_cap'] else "N/A", "Market Cap", "#f59e0b"),
+                (col5, "💵", f"{analysis['dividend_yield']*100:.2f}%" if analysis['dividend_yield'] else "N/A", "Dividend Yield", "#06b6d4"),
+                (col6, "📊", f"{analysis['beta']:.2f}" if analysis['beta'] else "N/A", "Beta", "#ef4444")
             ]
             
-            for col, icon, value, label in metrics:
+            for col, icon, value, label, color in metrics_data:
                 with col:
                     st.markdown(f'''
-                    <div class="metric-card" style="text-align: center; padding: 15px;">
-                        <div style="font-size: 1.5rem; margin-bottom: 5px;">{icon}</div>
-                        <div style="font-size: 1.2rem; font-weight: bold; color: #a78bfa; margin-bottom: 5px;">{value}</div>
-                        <div style="font-size: 0.9rem; color: #94a3b8;">{label}</div>
+                    <div style="background: linear-gradient(135deg, {color}15, {color}08); 
+                               border: 1px solid {color}40; border-radius: 15px; padding: 20px; 
+                               text-align: center; height: 120px; display: flex; flex-direction: column; justify-content: center;">
+                        <div style="font-size: 2rem; margin-bottom: 8px;">{icon}</div>
+                        <div style="font-size: 1.3rem; font-weight: bold; color: {color}; margin-bottom: 5px;">
+                            {value}
+                        </div>
+                        <div style="font-size: 0.85rem; color: #6b7280; font-weight: 500;">
+                            {label}
+                        </div>
                     </div>
                     ''', unsafe_allow_html=True)
             
-            # Dynamic valuation gauges
+            # Enhanced valuation methods section
             if analysis['upside_pe'] is not None or analysis['upside_ev'] is not None:
-                st.markdown('<div class="section-header">📊 Valuation Methods</div>', unsafe_allow_html=True)
+                st.markdown("### 🎯 Detailed Valuation Methods")
+                
+                st.markdown('''
+                <div style="background: rgba(124, 58, 237, 0.08); border: 1px solid rgba(124, 58, 237, 0.2); 
+                           border-radius: 15px; padding: 20px; margin: 20px 0;">
+                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
+                        <span style="font-size: 1.5rem;">🧮</span>
+                        <span style="font-size: 1.1rem; font-weight: 600; color: #7c3aed;">
+                            Dynamic Valuation Methodologies
+                        </span>
+                    </div>
+                    <p style="color: #6b7280; font-size: 0.95rem; margin-bottom: 0;">
+                        Both methods use real-time sector benchmarks for accurate fair value calculation
+                    </p>
+                </div>
+                ''', unsafe_allow_html=True)
+                
                 fig_gauge = create_gauge_chart(
                     analysis['upside_pe'] if analysis['upside_pe'] else 0,
                     analysis['upside_ev'] if analysis['upside_ev'] else 0
                 )
                 st.plotly_chart(fig_gauge, use_container_width=True)
             
-            # 52-week performance
+            # Enhanced 52-week performance section
             if analysis['pct_from_high'] is not None:
-                st.markdown('<div class="section-header">📍 52-Week Performance</div>', unsafe_allow_html=True)
+                st.markdown("### 📍 52-Week Performance Analysis")
+                
+                # Create performance visualization
+                performance_color = "#059669" if analysis['pct_from_low'] > 50 else "#f59e0b" if analysis['pct_from_low'] > 20 else "#dc2626"
+                high_distance_color = "#dc2626" if -analysis['pct_from_high'] > 30 else "#f59e0b" if -analysis['pct_from_high'] > 15 else "#059669"
+                
                 col1, col2 = st.columns(2)
                 
                 with col1:
-                    st.metric("Distance from 52W High", f"{-analysis['pct_from_high']:+.1f}%")
-                    st.metric("Distance from 52W Low", f"{analysis['pct_from_low']:+.1f}%")
+                    st.markdown(f'''
+                    <div style="background: linear-gradient(135deg, {high_distance_color}15, {high_distance_color}08); 
+                               border: 1px solid {high_distance_color}40; border-radius: 15px; padding: 25px; 
+                               text-align: center; margin-bottom: 15px;">
+                        <div style="font-size: 2.5rem; margin-bottom: 10px;">📉</div>
+                        <div style="font-size: 2rem; font-weight: bold; color: {high_distance_color}; margin-bottom: 8px;">
+                            {-analysis['pct_from_high']:+.1f}%
+                        </div>
+                        <div style="color: #6b7280; font-size: 1rem; font-weight: 500;">
+                            Distance from 52W High
+                        </div>
+                        <div style="color: #9ca3af; font-size: 0.85rem; margin-top: 5px;">
+                            ₹{analysis['high_52w']:,.2f}
+                        </div>
+                    </div>
+                    ''', unsafe_allow_html=True)
+                    
+                    st.markdown(f'''
+                    <div style="background: linear-gradient(135deg, {performance_color}15, {performance_color}08); 
+                               border: 1px solid {performance_color}40; border-radius: 15px; padding: 25px; 
+                               text-align: center;">
+                        <div style="font-size: 2.5rem; margin-bottom: 10px;">📈</div>
+                        <div style="font-size: 2rem; font-weight: bold; color: {performance_color}; margin-bottom: 8px;">
+                            {analysis['pct_from_low']:+.1f}%
+                        </div>
+                        <div style="color: #6b7280; font-size: 1rem; font-weight: 500;">
+                            Distance from 52W Low
+                        </div>
+                        <div style="color: #9ca3af; font-size: 0.85rem; margin-top: 5px;">
+                            ₹{analysis['low_52w']:,.2f}
+                        </div>
+                    </div>
+                    ''', unsafe_allow_html=True)
                 
                 with col2:
-                    st.metric("52W High", f"₹{analysis['high_52w']:,.2f}")
-                    st.metric("52W Low", f"₹{analysis['low_52w']:,.2f}")
+                    # 52-week range visualization
+                    current_position = ((analysis['price'] - analysis['low_52w']) / (analysis['high_52w'] - analysis['low_52w'])) * 100
+                    
+                    st.markdown(f'''
+                    <div style="background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.2); 
+                               border-radius: 15px; padding: 25px; height: 100%;">
+                        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 20px;">
+                            <span style="font-size: 1.5rem;">📊</span>
+                            <span style="font-size: 1.1rem; font-weight: 600; color: #3b82f6;">
+                                52-Week Range Position
+                            </span>
+                        </div>
+                        
+                        <div style="background: #e5e7eb; border-radius: 10px; height: 20px; margin: 20px 0; position: relative; overflow: hidden;">
+                            <div style="background: linear-gradient(90deg, #dc2626, #f59e0b, #059669); 
+                                       height: 100%; width: {current_position:.1f}%; border-radius: 10px;">
+                            </div>
+                            <div style="position: absolute; top: 50%; right: 10px; transform: translateY(-50%); 
+                                       background: white; border-radius: 50%; width: 16px; height: 16px; border: 2px solid #3b82f6;">
+                            </div>
+                        </div>
+                        
+                        <div style="display: flex; justify-content: space-between; font-size: 0.85rem; color: #6b7280;">
+                            <span>52W Low</span>
+                            <span style="font-weight: 600; color: #3b82f6;">{current_position:.1f}% of range</span>
+                            <span>52W High</span>
+                        </div>
+                        
+                        <div style="margin-top: 20px; padding: 15px; background: rgba(255, 255, 255, 0.1); border-radius: 8px;">
+                            <div style="color: #374151; font-weight: 600; font-size: 1rem; margin-bottom: 5px;">
+                                Current Price: ₹{analysis['price']:,.2f}
+                            </div>
+                            <div style="color: #6b7280; font-size: 0.9rem;">
+                                Range: ₹{analysis['low_52w']:,.2f} - ₹{analysis['high_52w']:,.2f}
+                            </div>
+                        </div>
+                    </div>
+                    ''', unsafe_allow_html=True)
         
         elif error:
             st.error(f"❌ Error analyzing {ticker}: {error}")
