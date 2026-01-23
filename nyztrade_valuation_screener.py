@@ -21,7 +21,7 @@ from reportlab.lib.enums import TA_CENTER
 # STREAMLIT CONFIGURATION
 # ============================================================================
 st.set_page_config(
-    page_title="NYZTrade Comprehensive Platform",
+    page_title="NYZTrade Stock Valuation + Screener Professional dashboard",
     page_icon="🎯",
     layout="wide",
     initial_sidebar_state="expanded"
