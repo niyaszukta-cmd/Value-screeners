@@ -10956,10 +10956,8 @@ def main():
         strategy_options = [
             ("undervalued", "🎯 Undervalued Stocks (15%+ upside)"),
             ("undervalued_near_high", "🚀 Undervalued Near 52W High"),
-            ("undervalued_supertrend", "📈 Undervalued + SuperTrend Bullish"),
-            ("undervalued_rsi_macd", "🔍 Undervalued + Momentum Proxy"),
-            ("momentum", "⚡ Momentum Stocks"),
-            ("quality", "💎 Quality Stocks")
+            ("undervalued_supertrend", "📈 Undervalued + SuperTrend Bullish")
+           
         ]
         
         strategy_choice = st.sidebar.selectbox(
