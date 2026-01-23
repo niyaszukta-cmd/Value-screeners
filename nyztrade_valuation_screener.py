@@ -10492,7 +10492,7 @@ def run_industry_screener(industry, strategy_type="undervalued", max_results=50)
         upside = ((fair_value - fundamentals['price']) / fundamentals['price']) * 100
         
         # Remove outliers: Skip stocks with upside > 500% (likely data errors)
-        if upside > 500:
+        if upside > 350:
             continue
         
         # Get industry benchmarks for additional filtering
