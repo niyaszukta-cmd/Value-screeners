@@ -8849,14 +8849,14 @@ INDIAN_STOCKS = {
     "Railroads": {
         "CEBBCO.NS": "Commercial Engineers & Body Builders Co Limited",
         "NECCLTD.NS": "North Eastern Carrying Corporation Limited",
-        "TWL.NS": "Titagarh Wagons Limited"
-        “RVNL.NS”:  “Rail Vikas Nigam Limited” 
-“IRCTC.NS”:  “Indian Railway Catering & Tourism”
-“IRCON.NS”:  “Ircon International Limited” 
-“RITES.NS”:  “RITES Limited” 
-“TITAGARH.NS”:  “Titagarh Wagons”
-“BEML.NS”:  “BEML Limited”
-“CONCOR.NS”:  “Container Corporation of India”
+        "TWL.NS": "Titagarh Wagons Limited",
+        “RVNL.NS”: “Rail Vikas Nigam Limited”,
+“IRCTC.NS”: “Indian Railway Catering & Tourism”,
+“IRCON.NS”: “Ircon International Limited”,
+“RITES.NS”: “RITES Limited”,
+“TITAGARH.NS”: “Titagarh Wagons”,
+“BEML.NS”: “BEML Limited”,
+“CONCOR.NS”: “Container Corporation of India”
 
     },
 
